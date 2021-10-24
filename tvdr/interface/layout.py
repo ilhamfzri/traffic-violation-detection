@@ -3,11 +3,13 @@ import cv2
 from PySide2 import QtWidgets, QtGui
 from PySide2.QtCore import QWaitCondition, Slot
 from tvdr.utils import Parameter
+from tvdr.core import YOLOModel
 
 
 class MainLayout(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
+
         self.layout = QtWidgets.QFormLayout()
         self.parameter = Parameter()
 
@@ -21,6 +23,10 @@ class MainLayout(QtWidgets.QWidget):
         self.h_layout.addLayout(self.image_layout)
 
         self.setLayout(self.h_layout)
+
+        # Initialize YOLO Model
+        self.yolo = YOLOModel()
+        self.yolo.update_parameters(0.0, 0.0, 640)
 
     def set_configuration_layout(self):
         self.configuration_layout.addWidget(self.video_configuration())

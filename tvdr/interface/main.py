@@ -11,7 +11,6 @@ class MainWindows:
         self.widget = Widget()
 
         self.widget.setMaximumWidth(1500)
-        self.widget.showMaximized()
         self.widget.show()
 
         sys.exit(self.app.exec_())
