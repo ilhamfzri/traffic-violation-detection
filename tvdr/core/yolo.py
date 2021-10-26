@@ -25,160 +25,88 @@
 
 # AUTHORS
 # Ilham Fazri - ilhamfazri3rd@gmail.com
-
-from yolov5.utils.datasets import LoadImages
-from yolov5.utils.torch_utils import select_device, time_sync
-from yolov5.utils.general import non_max_suppression, scale_coords
-from yolov5.utils.general import check_img_size
-from yolov5.models.experimental import attempt_load
-from pathlib import Path
+from re import L
+from types import coroutine
+from typing import Text
+from PIL import ImageDraw
 
 import cv2
-import numpy as nps
 import torch
-import time
+import numpy as np
 
 
 class YOLOModel:
-    def __init__(self, weight="yolov5s.pt"):
-        # self.load_model(weight)
+    """
+    A class used to access YOLO Model
 
-        # This parameters will update soon
-        # self.imgsz = 640
-        pass
+    ...
 
-    def load_model(self, weights):
-        self.device = select_device("")
-        self.model = attempt_load(weights)
-        self.stride = int(self.model.stride.max())
-        self.imgsz = check_img_size(self.params.imgsz, s=self.stride)
-        self.half = self.device.type != "cpu"
-        self.names = (
-            self.model.module.names
-            if hasattr(self.model, "module")
-            else self.model.names
-        )
+    Attributes
+    ----------
+    device : str
+        run the model with 'cpu'/'gpu'
+    """
 
-        if self.half:
-            self.model.half()  # to FP16
+    def __init__(self, device: Text, draw_bounding_boxes: bool = True):
+        super().__init__()
+        self.device = self.select_device(device)
+        self.draw_bounding_boxes = draw_bounding_boxes
 
-    def update_parameters(self, conf_thres, iou_thres, imgsz):
-        self.conf_thres = conf_thres
-        self.iou_thres = iou_thres
-        self.imgsz = imgsz
+    def load_model(self, model_type: Text = "yolov5s"):
+        self.model = torch.hub.load("ultralytics/yolov5", "yolov5s")
 
-    def print_yolo_parameters(self):
-        pass
+    def inference_frame(self, frame_data: np.ndarray):
+        print(frame_data.shape)
+        self.result = self.model(frame_data)
+        self.result_pandas = self.result.pandas().xyxy[0]
 
-    def check_before_inference(self):
-        pass
+        print(self.result_pandas)
+        print(len(self.result_pandas))
 
-    def inference(self, video_path):
-        self.dataset = LoadImages(
-            path=video_path, img_size=self.imgsz, stride=self.stride
-        )
+        arr_coordinates = np.empty((0, 4), dtype=np.float32)
 
-        if self.device.type != "cpu":
-            self.model(
-                torch.zeros(1, 3, self.imgsz, self.imgsz)
-                .to(self.device)
-                .type_as(next(self.model.parameters()))
-            )  # run once
-
-        t0 = time.time()
-
-        for path, img, im0s, vid_cap in self.dataset:
-            img = torch.from_numpy(img).to(self.device)
-            img = img.half() if self.half else img.float()  # uint8 to fp16/32
-            img /= 255.0  # 0 - 255 to 0.0 - 1.0
-            if img.ndimension() == 3:
-                img = img.unsqueeze(0)
-
-            t1 = time_sync()
-            pred = self.model(img)[0]
-
-            pred = non_max_suppression(
-                pred, conf_thres=self.conf_thres, iou_thres=self.iou_thres
+        for i in range(0, len(self.result_pandas)):
+            coordinate = self.result_pandas.iloc[i]
+            arr_coordinates = np.append(
+                arr_coordinates,
+                np.array(
+                    [
+                        [
+                            coordinate["xmin"],
+                            coordinate["ymin"],
+                            coordinate["xmax"],
+                            coordinate["ymax"],
+                        ]
+                    ],
+                ),
+                axis=0,
             )
-            t2 = time_sync()
 
-            for i, det in enumerate(pred):
-                p, s, im0, frame = (
-                    path,
-                    "",
-                    im0s.copy(),
-                    getattr(self.dataset, "frame", 0),
-                )
+        if self.draw_bounding_boxes:
+            img_inference = self.create_bounding_boxes(frame_data, arr_coordinates)
 
-                p = Path(p)  # to Path
-                save_path = str(self.params.output_dir / p.name)  # img.jpg
-                txt_path = str(self.save_dir / "labels" / p.stem) + (
-                    "" if self.dataset.mode == "image" else f"_{frame}"
-                )  # img.txt
+        return img_inference
 
-                s += "%gx%g " % img.shape[2:]  # print string
-                gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+    def select_device(self, device: str):
+        if device == "cpu":
+            return torch.device("cpu")
+        elif device == "gpu":
+            return torch.device("gpu")
+        else:
+            raise Exception("Use 'cpu' or 'gpu' only!")
 
-                # if len(det):
-                #     det[:, :4] = scale_coords(
-                #         img.shape[2:], det[:, :4], im0.shape
-                #     ).round()
+    def create_bounding_boxes(self, frame: np.ndarray, coordinates: np.ndarray):
+        new_frame = frame.copy()
+        for i in range(0, len(coordinates)):
+            coordinate = coordinates[i]
+            new_frame = cv2.rectangle(
+                img=new_frame,
+                pt1=(int(coordinate[0]), int(coordinate[1])),
+                pt2=(int(coordinate[2]), int(coordinate[3])),
+                color=(0, 255, 0),
+                thickness=1,
+            )
+        return new_frame
 
-                #     for c in det[:, -1].unique():
-                #         n = (det[:, -1] == c).sum()  # detections per class
-                #         s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string
-
-                #     for *xyxy, conf, cls in reversed(det):
-                #         if self.params.save_txt:  # Write to file
-                #             xywh = (
-                #                 (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn)
-                #                 .view(-1)
-                #                 .tolist()
-                #             )  # normalized xywh
-                #             line = (
-                #                 (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)
-                #             )  # label format
-                #             with open(txt_path + ".txt", "a") as f:
-                #                 f.write(("%g " * len(line)).rstrip() % line + "\n")
-
-                #         if save_img or opt.save_crop or view_img:  # Add bbox to image
-                #             c = int(cls)  # integer class
-                #             label = (
-                #                 None
-                #                 if opt.hide_labels
-                #                 else (
-                #                     names[c]
-                #                     if opt.hide_conf
-                #                     else f"{names[c]} {conf:.2f}"
-                #                 )
-                #             )
-
-                #             plot_one_box(
-                #                 xyxy,
-                #                 im0,
-                #                 label=label,
-                #                 color=colors(c, True),
-                #                 line_thickness=opt.line_thickness,
-                #             )
-                #             if opt.save_crop:
-                #                 save_one_box(
-                #                     xyxy,
-                #                     im0s,
-                #                     file=save_dir
-                #                     / "crops"
-                #                     / names[c]
-                #                     / f"{p.stem}.jpg",
-                #                     BGR=True,
-                #                 )
-
-    def load_video(self, video_path):
-        cap = cv2.VideoCapture(video_path)
-
-        while cap.isOpened():
-            ret, frame = cap.read()
-            print(frame)
-            #     cv2.imshow("frame", frame)
-        #     if cv2.waitKey(1) & 0xFF == ord("q"):
-        #         break
-        # cap.release()
-        # cv2.destroyAllWindows()
+    def combine_human_and_motorcycle_bounding_boxes(self):
+        pass
