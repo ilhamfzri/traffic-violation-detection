@@ -1,9 +1,11 @@
 import cv2
+import qimage2ndarray
+import time
 
 from PySide2 import QtWidgets, QtGui
-from PySide2.QtCore import QWaitCondition, Slot
+from PySide2.QtCore import QTimer, QWaitCondition, Qt, Slot
 from tvdr.utils import Parameter
-from tvdr.core import YOLOModel
+from tvdr.core import YOLOModel, yolo
 
 
 class MainLayout(QtWidgets.QWidget):
@@ -12,11 +14,11 @@ class MainLayout(QtWidgets.QWidget):
 
         self.layout = QtWidgets.QFormLayout()
         self.parameter = Parameter()
-
         self.configuration_layout = QtWidgets.QVBoxLayout()
         self.set_configuration_layout()
 
         self.image_layout = QtWidgets.QVBoxLayout()
+        self.set_image_layout()
 
         self.h_layout = QtWidgets.QHBoxLayout()
         self.h_layout.addLayout(self.configuration_layout)
@@ -25,8 +27,8 @@ class MainLayout(QtWidgets.QWidget):
         self.setLayout(self.h_layout)
 
         # Initialize YOLO Model
-        self.yolo = YOLOModel()
-        self.yolo.update_parameters(0.0, 0.0, 640)
+        self.yolo = YOLOModel(device="cpu")
+        # self.yolo.update_parameters(0.0, 0.0, 640)
 
     def set_configuration_layout(self):
         self.configuration_layout.addWidget(self.video_configuration())
@@ -36,9 +38,7 @@ class MainLayout(QtWidgets.QWidget):
 
     def set_image_layout(self):
         self.image_frame = QtWidgets.QLabel()
-        self.image = cv2.imread(
-            "/media/hamz/Alpha/Semester7/Skripsi/TrafficViolationDetection/data/nabila.jpeg"
-        )
+        self.image = cv2.imread("samples/file-20200803-24-50u91u.jpg")
         self.image = QtGui.QImage(
             self.image.data,
             self.image.shape[1],
@@ -46,13 +46,13 @@ class MainLayout(QtWidgets.QWidget):
             QtGui.QImage.Format_RGB888,
         ).rgbSwapped()
         self.image_frame.setPixmap(QtGui.QPixmap.fromImage(self.image))
-
         self.image_layout.addWidget(self.image_frame)
 
     def video_configuration(self):
         self.groupbox_layout = QtWidgets.QHBoxLayout()
 
         self.lineedit_video_path = QtWidgets.QLineEdit()
+        self.lineedit_video_path.setContentsMargins(0, 0, 0, 0)
         self.button_video_load = QtWidgets.QPushButton("Load Video")
         self.button_video_load.clicked.connect(self.load_video)
 
@@ -60,17 +60,31 @@ class MainLayout(QtWidgets.QWidget):
         self.groupbox_layout.addWidget(self.button_video_load)
 
         self.groupbox_video = QtWidgets.QGroupBox("Video Data")
+        self.groupbox_video.setContentsMargins(0, 0, 0, 0)
+        self.groupbox_video.setMaximumHeight(80)
+
         self.groupbox_video.setLayout(self.groupbox_layout)
 
         return self.groupbox_video
 
     def model_yolo_configuration(self):
+        # Combo Box YOLO
+        self.yolomodel_vlayout = QtWidgets.QVBoxLayout()
+        self.yolomodel_vlayout.setSpacing(0)
+        self.yolomodel_vlayout.setMargin(0)
+        self.yolomodel_vlayout.setContentsMargins(0, 0, 0, 0)
+
         self.yolomodel_layout = QtWidgets.QHBoxLayout()
+        self.yolomodel_layout.setSpacing(0)
+        self.yolomodel_layout.setMargin(0)
+        self.yolomodel_layout.setContentsMargins(0, 0, 0, 0)
 
         self.combobox_yolo = QtWidgets.QComboBox()
 
         for model in self.parameter.yolo_model_dict.keys():
             self.combobox_yolo.addItem(model)
+
+        self.current_yolo_model_label = QtWidgets.QLabel("  Current Model : Not Loaded")
 
         self.button_model_yolo_load = QtWidgets.QPushButton("Load Model")
         self.button_model_yolo_load.clicked.connect(self.load_model)
@@ -78,8 +92,13 @@ class MainLayout(QtWidgets.QWidget):
         self.yolomodel_layout.addWidget(self.combobox_yolo)
         self.yolomodel_layout.addWidget(self.button_model_yolo_load)
 
-        self.groupbox_yolomodel = QtWidgets.QGroupBox("Load YOLO Model")
-        self.groupbox_yolomodel.setLayout(self.yolomodel_layout)
+        self.groupbox_yolomodel = QtWidgets.QGroupBox("YOLO Model")
+        self.groupbox_yolomodel.setMaximumHeight(80)
+
+        self.yolomodel_vlayout.addLayout(self.yolomodel_layout)
+        self.yolomodel_vlayout.addWidget(self.current_yolo_model_label)
+
+        self.groupbox_yolomodel.setLayout(self.yolomodel_vlayout)
 
         return self.groupbox_yolomodel
 
@@ -155,11 +174,15 @@ class MainLayout(QtWidgets.QWidget):
         )
         if fileName:
             self.lineedit_video_path.setText(fileName)
-            print(fileName)
+            self.parameter.video_path = fileName
 
     @Slot()
     def load_model(self):
-        print("model")
+        print("LOG : Loaded Model Clicked")
+        print("Model Type : {}".format(self.combobox_yolo.currentText()))
+        self.yolo.load_model(
+            self.parameter.yolo_model_dict[self.combobox_yolo.currentText()]
+        )
 
     @Slot()
     def update_parameters(self):
@@ -171,10 +194,47 @@ class MainLayout(QtWidgets.QWidget):
     @Slot()
     def start_inference(self):
         print("start inference")
+        if self.parameter.video_path == "":
+            print("Please load video first!")
+
+        else:
+            print("Video loaded!")
+            self.vid = cv2.VideoCapture(self.parameter.video_path)
+            if self.vid.isOpened() == False:
+                print("Error opening video file!")
+            else:
+                self.parameter.video_fps = self.vid.get(cv2.CAP_PROP_FPS)
+                self.parameter.frame_count = self.vid.get(cv2.CAP_PROP_FRAME_COUNT)
+
+                print(self.parameter.video_fps)
+                print(self.parameter.frame_count)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_frame)
+        self.timer.start(1000.0 / 30)
 
     @Slot()
     def stop_inference(self):
         print("stop inference")
+        self.timer.stop()
+
+    def update_frame(self):
+        ret, frame = self.vid.read()
+        # cv2.cv.CV_B
+        # frame = cv2.cvtColor(frame, cv2.cv.CV_BGR2RGB)
+        frame_resize = cv2.resize(
+            frame, (int(frame.shape[1] * 0.5), int(frame.shape[0] * 0.5))
+        )
+        new_frame = self.yolo.inference_frame(frame_resize)
+        img = QtGui.QImage(
+            new_frame,
+            new_frame.shape[1],
+            new_frame.shape[0],
+            QtGui.QImage.Format_RGB888,
+        )
+        # image = qimage2ndarray.array2qimage(frame)
+        self.image_frame.setPixmap(QtGui.QPixmap.fromImage(img))
+        # self.image_layout.addWidget(self.image_frame)
 
 
 class DatabaseLayout(QtWidgets.QWidget):
