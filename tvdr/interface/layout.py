@@ -1,3 +1,4 @@
+from PySide2 import QtCore
 import cv2
 import qimage2ndarray
 import time
@@ -5,30 +6,86 @@ import time
 from PySide2 import QtWidgets, QtGui
 from PySide2.QtCore import QTimer, QWaitCondition, Qt, Slot
 from tvdr.utils import Parameter
-from tvdr.core import YOLOModel, yolo
+from tvdr.core import YOLOModel
 
 
 class MainLayout(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
 
-        self.layout = QtWidgets.QFormLayout()
         self.parameter = Parameter()
-        self.configuration_layout = QtWidgets.QVBoxLayout()
-        self.set_configuration_layout()
 
-        self.image_layout = QtWidgets.QVBoxLayout()
-        self.set_image_layout()
-
-        self.h_layout = QtWidgets.QHBoxLayout()
-        self.h_layout.addLayout(self.configuration_layout)
-        self.h_layout.addLayout(self.image_layout)
-
-        self.setLayout(self.h_layout)
-
-        # Initialize YOLO Model
+        # Initialize YOLO
         self.yolo = YOLOModel(device="cpu")
-        # self.yolo.update_parameters(0.0, 0.0, 640)
+
+        # self.layout = QtWidgets.QFormLayout()
+        self.layout = QtWidgets.QGridLayout()
+        self.top_layout = self.set_top_layout()
+        self.left_layout = self.set_left_layout()
+        self.right_layout = self.set_right_layout()
+
+        self.layout.setAlignment(QtGui.Qt.AlignTop)
+        self.layout.addLayout(self.top_layout, 0, 0, 1, 2)
+        self.layout.addLayout(self.left_layout, 1, 0)
+        self.layout.addLayout(self.right_layout, 1, 1, 1, 3)
+        self.layout.setRowStretch(0, 4)
+        self.layout.setColumnStretch(0, 1)
+        self.layout.setColumnStretch(1, 1)
+
+        # self.configuration_layout = QtWidgets.QVBoxLayout()
+        # self.set_configuration_layout()
+
+        # self.image_layout = QtWidgets.QVBoxLayout()
+        # self.set_image_layout()
+
+        # self.h_layout = QtWidgets.QHBoxLayout()
+        # self.h_layout.addLayout(self.configuration_layout)
+        # self.h_layout.addLayout(self.image_layout)
+
+        # self.setLayout(self.h_layout)
+
+        # # Initialize YOLO Model
+        # self.yolo = YOLOModel(device="cpu")
+        # # self.yolo.update_parameters(0.0, 0.0, 640)
+
+        self.setLayout(self.layout)
+
+    def set_top_layout(self):
+        """configuration top layout"""
+        QtWidgets.QApplication.setStyle("Fusion")
+        styleComboBox = QtWidgets.QComboBox()
+        styleComboBox.addItems(QtWidgets.QStyleFactory.keys())
+
+        styleLabel = QtWidgets.QLabel("&Style :")
+        styleLabel.setBuddy(styleComboBox)
+
+        self.useStylePaletteCheckBox = QtWidgets.QCheckBox(
+            "&Use style's standard palette"
+        )
+        self.useStylePaletteCheckBox.setChecked(True)
+
+        styleComboBox.activated[str].connect(self.changeStyle)
+        self.useStylePaletteCheckBox.toggled.connect(self.changePalette)
+
+        topLayout = QtWidgets.QHBoxLayout()
+        topLayout.addWidget(styleLabel)
+        topLayout.addWidget(styleComboBox)
+        topLayout.addStretch(1)
+        topLayout.addWidget(self.useStylePaletteCheckBox)
+
+        return topLayout
+
+    def changeStyle(self, styleName):
+        QtWidgets.QApplication.setStyle(QtWidgets.QStyleFactory.create(styleName))
+        self.changePalette()
+
+    def changePalette(self):
+        if self.useStylePaletteCheckBox.isChecked():
+            QtWidgets.QApplication.setPalette(
+                QtWidgets.Application.style().standardPalette()
+            )
+        else:
+            QtWidgets.QApplication.setPalette(self.originalPalette)
 
     def set_configuration_layout(self):
         self.configuration_layout.addWidget(self.video_configuration())
@@ -46,23 +103,35 @@ class MainLayout(QtWidgets.QWidget):
             QtGui.QImage.Format_RGB888,
         ).rgbSwapped()
         self.image_frame.setPixmap(QtGui.QPixmap.fromImage(self.image))
-        self.image_layout.addWidget(self.image_frame)
+        return self.image_frame
+
+    def set_left_layout(self):
+        """set left layout for configuration"""
+
+        v_layout = QtWidgets.QVBoxLayout()
+        v_layout.addWidget(self.video_configuration())
+        v_layout.addWidget(self.model_yolo_configuration())
+        v_layout.addWidget(self.main_configuration())
+        v_layout.addWidget(self.control_configuration())
+        return v_layout
+
+    def set_right_layout(self):
+        h_layout = QtWidgets.QVBoxLayout()
+        h_layout.addWidget(self.set_image_layout())
+        return h_layout
 
     def video_configuration(self):
+        """set video configuration for loading video"""
         self.groupbox_layout = QtWidgets.QHBoxLayout()
 
         self.lineedit_video_path = QtWidgets.QLineEdit()
-        self.lineedit_video_path.setContentsMargins(0, 0, 0, 0)
         self.button_video_load = QtWidgets.QPushButton("Load Video")
         self.button_video_load.clicked.connect(self.load_video)
 
-        self.groupbox_layout.addWidget(self.lineedit_video_path)
-        self.groupbox_layout.addWidget(self.button_video_load)
+        self.groupbox_layout.addWidget(self.lineedit_video_path, 2)
+        self.groupbox_layout.addWidget(self.button_video_load, 1)
 
         self.groupbox_video = QtWidgets.QGroupBox("Video Data")
-        self.groupbox_video.setContentsMargins(0, 0, 0, 0)
-        self.groupbox_video.setMaximumHeight(80)
-
         self.groupbox_video.setLayout(self.groupbox_layout)
 
         return self.groupbox_video
@@ -70,15 +139,8 @@ class MainLayout(QtWidgets.QWidget):
     def model_yolo_configuration(self):
         # Combo Box YOLO
         self.yolomodel_vlayout = QtWidgets.QVBoxLayout()
-        self.yolomodel_vlayout.setSpacing(0)
-        self.yolomodel_vlayout.setMargin(0)
-        self.yolomodel_vlayout.setContentsMargins(0, 0, 0, 0)
 
         self.yolomodel_layout = QtWidgets.QHBoxLayout()
-        self.yolomodel_layout.setSpacing(0)
-        self.yolomodel_layout.setMargin(0)
-        self.yolomodel_layout.setContentsMargins(0, 0, 0, 0)
-
         self.combobox_yolo = QtWidgets.QComboBox()
 
         for model in self.parameter.yolo_model_dict.keys():
@@ -89,11 +151,10 @@ class MainLayout(QtWidgets.QWidget):
         self.button_model_yolo_load = QtWidgets.QPushButton("Load Model")
         self.button_model_yolo_load.clicked.connect(self.load_model)
 
-        self.yolomodel_layout.addWidget(self.combobox_yolo)
-        self.yolomodel_layout.addWidget(self.button_model_yolo_load)
+        self.yolomodel_layout.addWidget(self.combobox_yolo, 2)
+        self.yolomodel_layout.addWidget(self.button_model_yolo_load, 1)
 
         self.groupbox_yolomodel = QtWidgets.QGroupBox("YOLO Model")
-        self.groupbox_yolomodel.setMaximumHeight(80)
 
         self.yolomodel_vlayout.addLayout(self.yolomodel_layout)
         self.yolomodel_vlayout.addWidget(self.current_yolo_model_label)
@@ -104,16 +165,42 @@ class MainLayout(QtWidgets.QWidget):
 
     def main_configuration(self):
         self.main_configuration_layout = QtWidgets.QVBoxLayout()
+        self.main_configuration_layout.setAlignment(QtCore.Qt.AlignTop)
+        self.main_configuration_layout.setStretch(1, 1)
+
         self.main_configuration_layout.addLayout(self.object_threshold_configuration())
         self.main_configuration_layout.addLayout(self.iou_threshold_configuration())
+        self.main_configuration_layout.addLayout(self.max_detection_configuration())
 
-        self.main_configuration_groupbox = QtWidgets.QGroupBox("Configuration")
+        # Set Init YOLO Configuration Value
+        self.set_init_value_main_configuration()
+
+        self.main_configuration_groupbox = QtWidgets.QGroupBox(
+            "Parameter Configuration"
+        )
+
+        self.set_button_classes = QtWidgets.QPushButton("Change Classes")
+        self.set_button_classes.clicked.connect(self.set_msgbox_classes)
+
+        self.set_button_update_parameters = QtWidgets.QPushButton("Apply Parameters")
+        self.set_button_update_parameters.clicked.connect(self.update_parameters)
+
+        self.main_configuration_layout.addWidget(self.set_button_classes)
+        self.main_configuration_layout.addWidget(self.set_button_update_parameters)
+
+        self.main_configuration_groupbox.setAlignment(QtCore.Qt.AlignTop)
         self.main_configuration_groupbox.setLayout(self.main_configuration_layout)
 
         return self.main_configuration_groupbox
 
+    def set_init_value_main_configuration(self):
+        self.object_threshold_spinbox.setValue(self.parameter.yolo_conf)
+        self.iou_threshold_spinbox.setValue(self.parameter.yolo_iou)
+        self.max_detection_spinbox.setValue(self.parameter.yolo_max_detection)
+
     def object_threshold_configuration(self):
         self.object_threshold_layout = QtWidgets.QHBoxLayout()
+
         self.object_threshold_spinbox = QtWidgets.QDoubleSpinBox()
         self.object_threshold_spinbox.setMaximum(1)
         self.object_threshold_spinbox.setSingleStep(0.01)
@@ -136,11 +223,20 @@ class MainLayout(QtWidgets.QWidget):
 
         return self.iou_threshold_layout
 
+    def max_detection_configuration(self):
+        self.max_detection_layout = QtWidgets.QHBoxLayout()
+        self.max_detection_spinbox = QtWidgets.QDoubleSpinBox()
+        self.max_detection_spinbox.setMinimum(1)
+        self.max_detection_spinbox.setMaximum(500)
+        self.max_detection_spinbox.setSingleStep(1)
+
+        self.max_detection_layout.addWidget(QtWidgets.QLabel("Max Detection"))
+        self.max_detection_layout.addWidget(self.max_detection_spinbox)
+
+        return self.max_detection_layout
+
     def control_configuration(self):
         self.control_groupbox = QtWidgets.QGroupBox("Control")
-
-        self.button_update_parameter = QtWidgets.QPushButton("Update Parameters")
-        self.button_update_parameter.clicked.connect(self.update_parameters)
 
         self.button_start = QtWidgets.QPushButton("Start")
         self.button_start.clicked.connect(self.start_inference)
@@ -154,12 +250,64 @@ class MainLayout(QtWidgets.QWidget):
         control_h_layout.addWidget(self.button_start)
         control_h_layout.addWidget(self.button_stop)
 
-        control_v_layout.addWidget(self.button_update_parameter)
         control_v_layout.addLayout(control_h_layout)
 
         self.control_groupbox.setLayout(control_v_layout)
 
         return self.control_groupbox
+
+    def set_msgbox_classes(self):
+        print("LOG : Change Classes")
+        msg = QtWidgets.QDialog()
+        checkbox_layout = QtWidgets.QGridLayout()
+
+        self.checkbox_car = QtWidgets.QCheckBox()
+        self.checkbox_motorcycle = QtWidgets.QCheckBox()
+        self.checkbox_bus = QtWidgets.QCheckBox()
+        self.checkbox_truck = QtWidgets.QCheckBox()
+
+        self.checkbox_save = QtWidgets.QPushButton("Save")
+        self.checkbox_save.clicked.connect(self.set_classes)
+
+        self.check_current_classses()
+
+        checkbox_layout.addWidget(QtWidgets.QLabel("Car"), 0, 0)
+        checkbox_layout.addWidget(self.checkbox_car, 0, 1)
+        checkbox_layout.addWidget(QtWidgets.QLabel("Motorcycle"), 1, 0)
+        checkbox_layout.addWidget(self.checkbox_motorcycle, 1, 1)
+        checkbox_layout.addWidget(QtWidgets.QLabel("Bus"), 2, 0)
+        checkbox_layout.addWidget(self.checkbox_bus, 2, 1)
+        checkbox_layout.addWidget(QtWidgets.QLabel("Truck"), 3, 0)
+        checkbox_layout.addWidget(self.checkbox_truck, 3, 1)
+        checkbox_layout.addWidget(self.checkbox_save, 4, 0, 1, 2)
+
+        msg.setWindowModality(Qt.ApplicationModal)
+        msg.setLayout(checkbox_layout)
+        msg.exec_()
+
+    def check_current_classses(self):
+        if 2 in self.parameter.yolo_classes:
+            self.checkbox_car.setChecked(True)
+        if 3 in self.parameter.yolo_classes:
+            self.checkbox_motorcycle.setChecked(True)
+        if 5 in self.parameter.yolo_classes:
+            self.checkbox_bus.setChecked(True)
+        if 7 in self.parameter.yolo_classes:
+            self.checkbox_truck.setChecked(True)
+
+    @Slot()
+    def set_classes(self):
+        classes_list = []
+        if self.checkbox_car.isChecked():
+            classes_list.append(2)
+        if self.checkbox_motorcycle.isChecked():
+            classes_list.append(3)
+        if self.checkbox_bus.isChecked():
+            classes_list.append(5)
+        if self.checkbox_truck.isChecked():
+            classes_list.append(7)
+        self.parameter.yolo_classes = classes_list
+        print(self.parameter.yolo_classes)
 
     @Slot()
     def load_video(self):
@@ -180,16 +328,34 @@ class MainLayout(QtWidgets.QWidget):
     def load_model(self):
         print("LOG : Loaded Model Clicked")
         print("Model Type : {}".format(self.combobox_yolo.currentText()))
-        self.yolo.load_model(
+
+        self.current_yolo_model_label.setText("  Current Model : Loading model...")
+
+        state_model = self.yolo.load_model(
             self.parameter.yolo_model_dict[self.combobox_yolo.currentText()]
         )
+        if state_model:
+            self.current_yolo_model_label.setText(
+                "  Current Model : {}".format(self.combobox_yolo.currentText())
+            )
+        else:
+            self.current_yolo_model_label.setText(
+                "  Current Model : Failed to load model!"
+            )
 
     @Slot()
     def update_parameters(self):
-        print("\nUpdating Parameters")
-        print("video_path : {}".format(self.lineedit_video_path.text()))
-        print("iou_threshold : {}".format(self.iou_threshold_spinbox.value()))
-        print("object_threshold : {}".format(self.object_threshold_spinbox.value()))
+        self.parameter.yolo_conf = self.object_threshold_spinbox.value()
+        self.parameter.yolo_iou = self.iou_threshold_spinbox.value()
+        self.parameter.yolo_max_detection = int(self.max_detection_spinbox.value())
+
+        self.yolo.update_params(
+            conf=self.parameter.yolo_conf,
+            iou=self.parameter.yolo_iou,
+            classes=self.parameter.yolo_classes,
+            multi_label=self.parameter.yolo_multi_label,
+            max_detection=self.parameter.yolo_max_detection,
+        )
 
     @Slot()
     def start_inference(self):
