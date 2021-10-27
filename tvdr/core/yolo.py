@@ -27,7 +27,7 @@
 # Ilham Fazri - ilhamfazri3rd@gmail.com
 from re import L
 from types import coroutine
-from typing import Text
+from typing import List, Text
 from PIL import ImageDraw
 
 import cv2
@@ -51,17 +51,27 @@ class YOLOModel:
         super().__init__()
         self.device = self.select_device(device)
         self.draw_bounding_boxes = draw_bounding_boxes
+        self.update_params_state = False
 
     def load_model(self, model_type: Text = "yolov5s"):
-        self.model = torch.hub.load("ultralytics/yolov5", "yolov5s")
+        try:
+            self.model = torch.hub.load("ultralytics/yolov5", "yolov5s")
+            return True
+        except:
+            return False
 
     def inference_frame(self, frame_data: np.ndarray):
-        print(frame_data.shape)
+
+        if self.update_params_state == True:
+            self.model.conf = self.conf
+            self.model.iou = self.iou
+            self.model.classes = self.classes
+            self.model.multi_label = self.multi_label
+            self.model.max_det = self.max_detection
+            self.update_params_state = False
+
         self.result = self.model(frame_data)
         self.result_pandas = self.result.pandas().xyxy[0]
-
-        print(self.result_pandas)
-        print(len(self.result_pandas))
 
         arr_coordinates = np.empty((0, 4), dtype=np.float32)
 
@@ -110,3 +120,18 @@ class YOLOModel:
 
     def combine_human_and_motorcycle_bounding_boxes(self):
         pass
+
+    def update_params(
+        self,
+        conf: float,
+        iou: float,
+        classes: List,
+        multi_label: bool,
+        max_detection: int,
+    ):
+        self.conf = conf
+        self.iou = iou
+        self.classes = classes
+        self.multi_label = multi_label
+        self.max_detection = max_detection
+        self.update_params_state = True
