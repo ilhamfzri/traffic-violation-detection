@@ -7,6 +7,7 @@ from PySide2 import QtWidgets, QtGui
 from PySide2.QtCore import QTimer, QWaitCondition, Qt, Slot
 from tvdr.utils import Parameter
 from tvdr.core import YOLOModel
+from tvdr.interface.traffic_light import TrafficLight
 
 
 class MainLayout(QtWidgets.QWidget):
@@ -31,23 +32,6 @@ class MainLayout(QtWidgets.QWidget):
         self.layout.setRowStretch(0, 4)
         self.layout.setColumnStretch(0, 1)
         self.layout.setColumnStretch(1, 1)
-
-        # self.configuration_layout = QtWidgets.QVBoxLayout()
-        # self.set_configuration_layout()
-
-        # self.image_layout = QtWidgets.QVBoxLayout()
-        # self.set_image_layout()
-
-        # self.h_layout = QtWidgets.QHBoxLayout()
-        # self.h_layout.addLayout(self.configuration_layout)
-        # self.h_layout.addLayout(self.image_layout)
-
-        # self.setLayout(self.h_layout)
-
-        # # Initialize YOLO Model
-        # self.yolo = YOLOModel(device="cpu")
-        # # self.yolo.update_parameters(0.0, 0.0, 640)
-
         self.setLayout(self.layout)
 
     def set_top_layout(self):
@@ -182,16 +166,25 @@ class MainLayout(QtWidgets.QWidget):
         self.set_button_classes = QtWidgets.QPushButton("Change Classes")
         self.set_button_classes.clicked.connect(self.set_msgbox_classes)
 
+        self.set_traffic_light_area = QtWidgets.QPushButton("Set Traffic Lights Area")
+        self.set_traffic_light_area.clicked.connect(self.set_traffic_light)
+
         self.set_button_update_parameters = QtWidgets.QPushButton("Apply Parameters")
         self.set_button_update_parameters.clicked.connect(self.update_parameters)
 
         self.main_configuration_layout.addWidget(self.set_button_classes)
+        self.main_configuration_layout.addWidget(self.set_traffic_light_area)
         self.main_configuration_layout.addWidget(self.set_button_update_parameters)
 
         self.main_configuration_groupbox.setAlignment(QtCore.Qt.AlignTop)
         self.main_configuration_groupbox.setLayout(self.main_configuration_layout)
 
         return self.main_configuration_groupbox
+
+    def set_traffic_light(self):
+        if self.parameter.video_path != "":
+            self.traffic_light = TrafficLight()
+            self.traffic_light.show(self.parameter)
 
     def set_init_value_main_configuration(self):
         self.object_threshold_spinbox.setValue(self.parameter.yolo_conf)
@@ -203,6 +196,7 @@ class MainLayout(QtWidgets.QWidget):
 
         self.object_threshold_spinbox = QtWidgets.QDoubleSpinBox()
         self.object_threshold_spinbox.setMaximum(1)
+        self.object_threshold_spinbox.setMinimum(0)
         self.object_threshold_spinbox.setSingleStep(0.01)
 
         self.object_threshold_spinbox.setValue(0.5)
@@ -280,7 +274,7 @@ class MainLayout(QtWidgets.QWidget):
         checkbox_layout.addWidget(QtWidgets.QLabel("Truck"), 3, 0)
         checkbox_layout.addWidget(self.checkbox_truck, 3, 1)
         checkbox_layout.addWidget(self.checkbox_save, 4, 0, 1, 2)
-
+        Qt.ApplicationModal
         msg.setWindowModality(Qt.ApplicationModal)
         msg.setLayout(checkbox_layout)
         msg.exec_()
@@ -386,8 +380,6 @@ class MainLayout(QtWidgets.QWidget):
 
     def update_frame(self):
         ret, frame = self.vid.read()
-        # cv2.cv.CV_B
-        # frame = cv2.cvtColor(frame, cv2.cv.CV_BGR2RGB)
         frame_resize = cv2.resize(
             frame, (int(frame.shape[1] * 0.5), int(frame.shape[0] * 0.5))
         )
