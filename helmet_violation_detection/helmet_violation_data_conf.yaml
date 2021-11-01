@@ -1,0 +1,6 @@
+train: "/content/drive/MyDrive/Skripsi/Helmet Detector/Datasets/Kaggle/splited/images/train"
+val: "/content/drive/MyDrive/Skripsi/Helmet Detector/Datasets/Kaggle/splited/images/val"
+test: "/content/drive/MyDrive/Skripsi/Helmet Detector/Datasets/Kaggle/splited/images/test"
+
+nc: 2
+names: ["Without Helmet", "With Helmet"]
