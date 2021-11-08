@@ -1,12 +1,41 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+# The MIT License (MIT)
+
+# Copyright (c) 2020 UGM
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# AUTHORS
+# Ilham Fazri - ilhamfazri3rd@gmail.com
+
 from PySide2 import QtCore
 import cv2
 import qimage2ndarray
 import time
+import numpy as np
 
 from PySide2 import QtWidgets, QtGui
 from PySide2.QtCore import QTimer, QWaitCondition, Qt, Slot
 from tvdr.utils import Parameter
-from tvdr.core import YOLOModel
+from tvdr.core import YOLOModel, TrafficLightDetection
 from tvdr.interface.traffic_light import TrafficLight
 
 
@@ -19,6 +48,9 @@ class MainLayout(QtWidgets.QWidget):
         # Initialize YOLO
         self.yolo = YOLOModel(device="cpu")
 
+        # Initialize Traffic Light State Detection
+        self.tld = TrafficLightDetection(self.parameter)
+
         # self.layout = QtWidgets.QFormLayout()
         self.layout = QtWidgets.QGridLayout()
         self.top_layout = self.set_top_layout()
@@ -27,11 +59,12 @@ class MainLayout(QtWidgets.QWidget):
 
         self.layout.setAlignment(QtGui.Qt.AlignTop)
         self.layout.addLayout(self.top_layout, 0, 0, 1, 2)
-        self.layout.addLayout(self.left_layout, 1, 0)
+        self.layout.addLayout(self.left_layout, 1, 0, Qt.AlignLeft)
         self.layout.addLayout(self.right_layout, 1, 1, 1, 3)
         self.layout.setRowStretch(0, 4)
         self.layout.setColumnStretch(0, 1)
         self.layout.setColumnStretch(1, 1)
+        self.layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.setLayout(self.layout)
 
     def set_top_layout(self):
@@ -59,6 +92,24 @@ class MainLayout(QtWidgets.QWidget):
 
         return topLayout
 
+    def set_inference_information_layout(self):
+        information_combobox = QtWidgets.QGroupBox("Information")
+        v_layout = QtWidgets.QVBoxLayout()
+        self.traffic_light_state_label = QtWidgets.QLabel("Traffic Light State \t: ")
+        self.inference_fps_label = QtWidgets.QLabel("Inference FPS \t\t: ")
+        self.inference_log = QtWidgets.QPlainTextEdit("Log")
+        self.inference_log.setMaximumHeight(75)
+
+        self.inference_progress_slider = QtWidgets.QProgressBar()
+
+        v_layout.addWidget(self.traffic_light_state_label)
+        v_layout.addWidget(self.inference_fps_label)
+        v_layout.addWidget(self.inference_progress_slider)
+        v_layout.addWidget(self.inference_log)
+
+        information_combobox.setLayout(v_layout)
+        return information_combobox
+
     def changeStyle(self, styleName):
         QtWidgets.QApplication.setStyle(QtWidgets.QStyleFactory.create(styleName))
         self.changePalette()
@@ -77,15 +128,21 @@ class MainLayout(QtWidgets.QWidget):
         self.configuration_layout.addWidget(self.main_configuration())
         self.configuration_layout.addWidget(self.control_configuration())
 
+    def convert_cv_qt(self, cv_img):
+        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape
+        bytes_per_line = ch * w
+        convert_to_Qt_format = QtGui.QImage(
+            rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888
+        )
+        p = convert_to_Qt_format.scaled(3000, 500, Qt.KeepAspectRatio)
+        return p
+
     def set_image_layout(self):
         self.image_frame = QtWidgets.QLabel()
         self.image = cv2.imread("samples/file-20200803-24-50u91u.jpg")
-        self.image = QtGui.QImage(
-            self.image.data,
-            self.image.shape[1],
-            self.image.shape[0],
-            QtGui.QImage.Format_RGB888,
-        ).rgbSwapped()
+
+        self.image = self.convert_cv_qt(self.image)
         self.image_frame.setPixmap(QtGui.QPixmap.fromImage(self.image))
         return self.image_frame
 
@@ -100,8 +157,10 @@ class MainLayout(QtWidgets.QWidget):
         return v_layout
 
     def set_right_layout(self):
+        inference_information_layout = self.set_inference_information_layout()
         h_layout = QtWidgets.QVBoxLayout()
         h_layout.addWidget(self.set_image_layout())
+        h_layout.addWidget(inference_information_layout)
         return h_layout
 
     def video_configuration(self):
@@ -170,7 +229,7 @@ class MainLayout(QtWidgets.QWidget):
         self.set_traffic_light_area.clicked.connect(self.set_traffic_light)
 
         self.set_button_update_parameters = QtWidgets.QPushButton("Apply Parameters")
-        self.set_button_update_parameters.clicked.connect(self.update_parameters)
+        self.set_button_update_parameters.clicked.connect(self.apply_parameters)
 
         self.main_configuration_layout.addWidget(self.set_button_classes)
         self.main_configuration_layout.addWidget(self.set_traffic_light_area)
@@ -185,6 +244,9 @@ class MainLayout(QtWidgets.QWidget):
         if self.parameter.video_path != "":
             self.traffic_light = TrafficLight()
             self.traffic_light.show(self.parameter)
+            if self.traffic_light.result() == 1:
+                self.parameter = self.traffic_light.parameter
+                self.update_parameter()
 
     def set_init_value_main_configuration(self):
         self.object_threshold_spinbox.setValue(self.parameter.yolo_conf)
@@ -338,7 +400,7 @@ class MainLayout(QtWidgets.QWidget):
             )
 
     @Slot()
-    def update_parameters(self):
+    def apply_parameters(self):
         self.parameter.yolo_conf = self.object_threshold_spinbox.value()
         self.parameter.yolo_iou = self.iou_threshold_spinbox.value()
         self.parameter.yolo_max_detection = int(self.max_detection_spinbox.value())
@@ -379,20 +441,49 @@ class MainLayout(QtWidgets.QWidget):
         self.timer.stop()
 
     def update_frame(self):
+
+        start_time = time.time()
+
+        # get frame from cv2 read
         ret, frame = self.vid.read()
+
+        # get parameter traffic light frame position
+        index_crop = self.parameter.traffic_light_area
+
+        # croping frame to get traffic light frame
+        self.traffic_light_frame = frame[
+            index_crop[1] : index_crop[3], index_crop[0] : index_crop[2]
+        ]
+        self.traffic_light_frame = np.ascontiguousarray(self.traffic_light_frame)
+
+        # processing to get color of traffic light
+        status = self.tld.detect_state(self.traffic_light_frame)
+
+        # resize frame for yolo inference
         frame_resize = cv2.resize(
             frame, (int(frame.shape[1] * 0.5), int(frame.shape[0] * 0.5))
         )
+
+        # inference yolov5 and count processing time
         new_frame = self.yolo.inference_frame(frame_resize)
-        img = QtGui.QImage(
-            new_frame,
-            new_frame.shape[1],
-            new_frame.shape[0],
-            QtGui.QImage.Format_RGB888,
-        )
-        # image = qimage2ndarray.array2qimage(frame)
+        end_time = time.time()
+
+        # update inference information
+        fps = 1 / (end_time - start_time)
+        progress_value = (
+            self.vid.get(cv2.CAP_PROP_POS_FRAMES) / self.parameter.frame_count
+        ) * 100
+        self.traffic_light_state_label.setText(f"Traffic Light State \t: {status}")
+        # self.inference_fps_label.setText(f"Inference FPS \t\t: {fps:.2f}")
+        self.inference_fps_label.setText(str(self.parameter.video_fps))
+        self.inference_progress_slider.setValue(int(progress_value))
+
+        # convert and shows new frame inference in pyqt5 label
+        img = self.convert_cv_qt(new_frame)
         self.image_frame.setPixmap(QtGui.QPixmap.fromImage(img))
-        # self.image_layout.addWidget(self.image_frame)
+
+    def update_parameter(self):
+        self.tld.update_parameters(self.parameter)
 
 
 class DatabaseLayout(QtWidgets.QWidget):
