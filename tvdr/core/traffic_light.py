@@ -65,3 +65,6 @@ class TrafficLightDetection:
 
     def get_green_light_segmentation(self):
         return self.image_green_light
+
+    def get_all_segmentation(self):
+        all_mask = cv2.bitwise
