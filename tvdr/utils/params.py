@@ -4,22 +4,18 @@ class Parameter:
             "YOLOV5 Small": "yolov5s",
             "YOLOV5 Medium": "yolov5m",
         }
+        self.yolo_imgsz = 300
+        self.yolo_stride = "2"
         self.video_path = ""
         self.yolo_conf = 0.25
         self.yolo_iou = 0.45
         self.yolo_classes = [2, 3, 5, 7]
         self.yolo_multi_label = False
         self.yolo_max_detection = 500
-
-        # 0 = all area, 1 = traffic light area
+        self.device = "cpu"
         self.traffic_light_set_view = 0
-
-        # 0 = RGB, 1 = Segmentation
         self.traffic_light_post_processing = 0
-
-        # traffic ligth area : [x_begin, y_begin, x_end, y_end]
         self.traffic_light_area = [0, 20, 100, 300]
-
         self.traffic_light_red_light = {
             "h_min": 150,
             "h_max": 180,
@@ -39,3 +35,9 @@ class Parameter:
             "v_max": 255,
             "threshold": 13,
         }
+
+        self.draw_bounding_boxes = True
+        self.show_label_and_confedence = True
+        self.use_tracking = True
+        self.config_deepsort = "configs/deep_sort.yaml"
+        self.deepsort_use_cuda = False
