@@ -41,28 +41,7 @@ class DeepSort(object):
         )
 
     def update(self, bbox_xywh, confidences, classes, ori_img):
-        dst_size = (200, 200)
         self.height, self.width = ori_img.shape[:2]
-        scale_h = dst_size[1] / ori_img.shape[0]
-        scale_w = dst_size[0] / ori_img.shape[1]
-
-        new_bbox = np.copy(bbox_xywh)
-        new_bbox[:, 0] = bbox_xywh[:, 0] * scale_w
-        new_bbox[:, 1] = bbox_xywh[:, 1] * scale_h
-        new_bbox[:, 2] = bbox_xywh[:, 2] * scale_w
-        new_bbox[:, 3] = bbox_xywh[:, 3] * scale_h
-
-        # print(new_bbox_xywh.shape)
-        # print(bbox_xywh)
-        # print(new_bbox)
-        # print(type(bbox_xywh))
-
-        new_img = cv2.resize(ori_img, dsize=(200, 200))
-
-        bbox_xywh = np.copy(new_bbox)
-        ori_img = np.copy(new_img)
-
-        # print(ori_img.shape)
 
         features = self._get_features(bbox_xywh, ori_img)
 
@@ -90,6 +69,8 @@ class DeepSort(object):
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue
             box = track.to_tlwh()
+            pred = track.get_yolo_pred()
+
             x1, y1, x2, y2 = self._tlwh_to_xyxy(box)
             track_id = track.track_id
             class_id = track.class_id
