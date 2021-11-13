@@ -25,77 +25,200 @@
 
 # AUTHORS
 # Ilham Fazri - ilhamfazri3rd@gmail.com
+
+import time
+from enum import auto
 from re import L
-from types import coroutine
 from typing import List, Text
+from urllib.request import parse_http_list
 from PIL import ImageDraw
+from numpy.core.fromnumeric import shape
+from numpy.lib.function_base import append
+from tvdr.core import sort
+from tvdr.utils.parser import get_config
+from tvdr.utils.params import Parameter
+from tvdr.core.deepsort import DeepSort
+from tvdr.core.sort import Sort
+from tvdr.utils.general import (
+    make_divisible,
+    xyxy2xywh,
+    check_img_size,
+    letterbox,
+    combine_yolo_deepsort_result,
+    combine_yolo_sort_result,
+    sort_validity,
+)
 
 import cv2
 import torch
 import numpy as np
 
 
-class YOLOModel:
-    """
-    A class used to access YOLO Model
+class YOLOInference:
+    def __init__(self, parameter: Parameter):
 
-    ...
-
-    Attributes
-    ----------
-    device : str
-        run the model with 'cpu'/'gpu'
-    """
-
-    def __init__(self, device: Text, draw_bounding_boxes: bool = True):
         super().__init__()
-        self.device = self.select_device(device)
-        self.draw_bounding_boxes = draw_bounding_boxes
-        self.update_params_state = False
+        self.parameter = parameter
+        self.device = self.select_device(self.parameter.device)
+        self.update_model_params = True
+
+        # DeepSORT Initialize
+        self.deepsort = DeepSort(
+            self.parameter.deepsort_model_path,
+            self.parameter.deepsort_max_dist,
+            self.parameter.deepsort_min_confidence,
+            self.parameter.deepsort_max_iou_distance,
+            self.parameter.deepsort_max_age,
+            self.parameter.deepsort_n_init,
+            self.parameter.deepsort_nn_budget,
+            self.parameter.deepsort_use_cuda,
+        )
+
+        # SORT Initialize
+        self.sort = Sort(
+            self.parameter.sort_max_age,
+            self.parameter.sort_min_hits,
+            self.parameter.sort_iou_threshold,
+        )
+
+        self.imgsz = check_img_size(
+            imgsz=self.parameter.yolo_imgsz, s=self.parameter.yolo_stride
+        )
 
     def load_model(self, model_type: Text = "yolov5s"):
+
         try:
             self.model = torch.hub.load("ultralytics/yolov5", "yolov5s")
+
             return True
         except:
             return False
 
     def inference_frame(self, frame_data: np.ndarray):
 
-        if self.update_params_state == True:
-            self.model.conf = self.conf
-            self.model.iou = self.iou
-            self.model.classes = self.classes
-            self.model.multi_label = self.multi_label
-            self.model.max_det = self.max_detection
-            self.update_params_state = False
+        if self.update_model_params == True:
 
-        self.result = self.model(frame_data)
-        self.result_pandas = self.result.pandas().xyxy[0]
+            self.model.conf = self.parameter.yolo_conf
+            self.model.iou = self.parameter.yolo_iou
+            self.model.classes = self.parameter.yolo_classes
+            self.model.multi_label = self.parameter.yolo_multi_label
+            self.model.max_det = self.parameter.yolo_max_detection
+            self.update_model_params = False
 
-        arr_coordinates = np.empty((0, 4), dtype=np.float32)
+        self.result = (
+            self.model(frame_data, size=self.parameter.yolo_imgsz)
+            .pandas()
+            .xyxy[0]
+            .to_numpy()
+        )
 
-        for i in range(0, len(self.result_pandas)):
-            coordinate = self.result_pandas.iloc[i]
-            arr_coordinates = np.append(
-                arr_coordinates,
-                np.array(
-                    [
-                        [
-                            coordinate["xmin"],
-                            coordinate["ymin"],
-                            coordinate["xmax"],
-                            coordinate["ymax"],
-                        ]
-                    ],
-                ),
-                axis=0,
+        if self.parameter.use_tracking == "Deep SORT":
+            result = self.tracking_deepsort(self.result, frame_data)
+            frame_data = self.annotator(frame_data, result)
+        elif self.parameter.use_tracking == "SORT":
+            result = self.tracking_sort(self.result, frame_data.shape)
+            if result.shape[0] > 0:
+                frame_data = self.annotator(frame_data, result)
+        else:
+            frame_data = self.annotator(frame_data, self.result)
+
+        return frame_data
+
+    def tracking_deepsort(self, result, frame):
+        det = result
+        xywhs = xyxy2xywh(det[:, 0:4])
+        if len(xywhs) > 0:
+            confs = det[:, 4]
+            clss = det[:, 5]
+            outputs = self.deepsort.update(xywhs, confs, clss, frame)
+            outputs = np.array(outputs)
+
+            result_combine = combine_yolo_deepsort_result(yolo=det, deep_sort=outputs)
+            return result_combine
+
+        else:
+            self.deepsort.increment_ages()
+            return None
+
+    def tracking_sort(self, result, frame_shape):
+        det = result[:, 0:4]
+        output = self.sort.update(det)
+        combine_result = combine_yolo_sort_result(
+            yolo=result, sort=output, frame_shape=frame_shape
+        )
+        # combine_result = sort_validity(sort=combine_result, frame_shape=frame_shape)
+        return combine_result
+
+    def annotator(self, frame: np.ndarray, result):
+        new_frame = frame.copy()
+
+        if self.parameter.show_stopline:
+            start_point = (
+                self.parameter.stopline[0][0][0],
+                self.parameter.stopline[0][0][1],
             )
 
-        if self.draw_bounding_boxes:
-            img_inference = self.create_bounding_boxes(frame_data, arr_coordinates)
+            end_point = (
+                self.parameter.stopline[1][0][0],
+                self.parameter.stopline[1][0][1],
+            )
 
-        return img_inference
+            new_frame = cv2.line(
+                new_frame, start_point, end_point, (0, 0, 255), 2, cv2.LINE_AA
+            )
+
+        if self.parameter.show_bounding_boxes:
+            for i in range(0, result.shape[0]):
+                coordinate = result[i]
+
+                new_frame = cv2.rectangle(
+                    img=new_frame,
+                    pt1=(int(coordinate[0]), int(coordinate[1])),
+                    pt2=(int(coordinate[2]), int(coordinate[3])),
+                    color=(0, 255, 0),
+                    thickness=2,
+                )
+
+        if self.parameter.show_label_and_confedence:
+
+            font = cv2.FONT_HERSHEY_DUPLEX
+            color = (0, 0, 0)
+            thickness = 1
+            fontScale = 0.5
+
+            for i in range(0, result.shape[0]):
+                data = result[i]
+                org = (int(data[0]), int(data[1]))
+                label = self.parameter.yolo_classes_name[int(data[5])]
+                if data[6] != None:
+                    object_id = data[6]
+                    text = f"#{object_id} {label} {data[4]:.2f}"
+                else:
+                    text = f"{label}-{data[4]:.2f}"
+                text_size, _ = cv2.getTextSize(
+                    text, fontFace=font, fontScale=fontScale, thickness=thickness
+                )
+                text_w, text_h = text_size
+
+                new_frame = cv2.rectangle(
+                    new_frame,
+                    pt1=(int(data[0]), int(data[1])),
+                    pt2=(int(data[0] + text_w), int(data[1] - text_h)),
+                    color=(0, 255, 0),
+                    thickness=-1,
+                )
+
+                new_frame = cv2.putText(
+                    new_frame,
+                    text,
+                    org=org,
+                    fontFace=font,
+                    fontScale=fontScale,
+                    color=color,
+                    thickness=thickness,
+                    lineType=cv2.LINE_AA,
+                )
+        return new_frame
 
     def select_device(self, device: str):
         if device == "cpu":
@@ -105,33 +228,6 @@ class YOLOModel:
         else:
             raise Exception("Use 'cpu' or 'gpu' only!")
 
-    def create_bounding_boxes(self, frame: np.ndarray, coordinates: np.ndarray):
-        new_frame = frame.copy()
-        for i in range(0, len(coordinates)):
-            coordinate = coordinates[i]
-            new_frame = cv2.rectangle(
-                img=new_frame,
-                pt1=(int(coordinate[0]), int(coordinate[1])),
-                pt2=(int(coordinate[2]), int(coordinate[3])),
-                color=(0, 255, 0),
-                thickness=1,
-            )
-        return new_frame
-
-    def combine_human_and_motorcycle_bounding_boxes(self):
-        pass
-
-    def update_params(
-        self,
-        conf: float,
-        iou: float,
-        classes: List,
-        multi_label: bool,
-        max_detection: int,
-    ):
-        self.conf = conf
-        self.iou = iou
-        self.classes = classes
-        self.multi_label = multi_label
-        self.max_detection = max_detection
-        self.update_params_state = True
+    def update_params(self, parameter: Parameter, update_model_params: bool = False):
+        self.parameter = parameter
+        self.update_model_params = update_model_params
