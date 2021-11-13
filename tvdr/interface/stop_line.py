@@ -1,3 +1,31 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+# The MIT License (MIT)
+
+# Copyright (c) 2020 UGM
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# AUTHORS
+# Ilham Fazri - ilhamfazri3rd@gmail.com
+
 import cv2
 import logging
 
@@ -41,6 +69,10 @@ class PainterLine(QLabel):
         self.qpixmap_data = QtGui.QPixmap.fromImage(self.qimage)
         self.setPixmap(self.qpixmap_data)
 
+    def set_point(self, list_point=[]):
+        self.list_point = list_point
+        self.draw_line()
+
     def clear_point(self):
         self.list_point = []
         self.update_point_viewer()
@@ -61,7 +93,7 @@ class PainterLine(QLabel):
 
             self.setPixmap(self.qpixmap_data)
 
-    def get_contour(self):
+    def get_stopline(self):
         points = np.empty((0, 1, 2))
         for i, point in enumerate(self.list_point):
             point_arr = np.array([[point.x(), point.y()]]).reshape(1, 1, 2)
@@ -116,10 +148,16 @@ class PainterLine(QLabel):
 
 
 class StopLine(QtWidgets.QDialog):
-    def __init__(self, video_path: str):
+    def __init__(self, video_path: str, current_stopline=[]):
         super().__init__()
         main_v_layout = QtWidgets.QVBoxLayout()
         main_h_layout = QtWidgets.QHBoxLayout()
+
+        list_point = []
+        for point in current_stopline:
+            list_point.append(QPoint(point[0][0], point[0][1]))
+
+        print(list_point)
 
         # Read Video Data and Information
         self.vid = cv2.VideoCapture(video_path)
@@ -131,9 +169,9 @@ class StopLine(QtWidgets.QDialog):
         self.frame_size_information = QtWidgets.QLabel(
             f"Resolution : {self.frame_data.shape}"
         )
-        self.mouse_pos_label = QtWidgets.QLabel(f"Mouse Position : (0,0)")
+        # self.mouse_pos_label = QtWidgets.QLabel(f"Mouse Position : (0,0)")
         h_layout_video_size_and_pointer.addWidget(self.frame_size_information)
-        h_layout_video_size_and_pointer.addWidget(self.mouse_pos_label)
+        # h_layout_video_size_and_pointer.addWidget(self.mouse_pos_label)
 
         # Set Slider
         self.slider_video = QtWidgets.QSlider()
@@ -146,6 +184,7 @@ class StopLine(QtWidgets.QDialog):
         # Set Image
         self.image_label = PainterLine(self)
         self.image_label.set_frame(self.frame_data)
+        self.image_label.set_point(list_point)
 
         # Set Button
         self.set_area_button = QtWidgets.QPushButton("Draw Line")
@@ -162,9 +201,9 @@ class StopLine(QtWidgets.QDialog):
         main_h_layout.addWidget(self.save_button)
         main_h_layout.setSizeConstraint(QLayout.SetFixedSize)
 
-        self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.update_mouse_pos)
-        self.timer.start(1000.0 / 30)
+        # self.timer = QtCore.QTimer()
+        # self.timer.timeout.connect(self.update_mouse_pos)
+        # self.timer.start(1000.0 / 30)
 
         # Set Main Menu Layout
         main_v_layout.addLayout(main_h_layout)
@@ -175,10 +214,10 @@ class StopLine(QtWidgets.QDialog):
 
         self.setWindowModality(QtCore.Qt.ApplicationModal)
 
-    def update_mouse_pos(self):
-        self.mouse_pos_label.setText(
-            f"Mouse Position : ({self.image_label.current_pos.x()},{self.image_label.current_pos.y()})"
-        )
+    # def update_mouse_pos(self):
+    #     self.mouse_pos_label.setText(
+    #         f"Mouse Position : ({self.image_label.current_pos.x()},{self.image_label.current_pos.y()})"
+    #     )
 
     def update_frame(self):
         frame_position = self.slider_video.value()
@@ -195,7 +234,7 @@ class StopLine(QtWidgets.QDialog):
         msg.setText("Do you want to save this stop lines ?")
         msg.setDetailedText(
             f"""The details paramaters are as follows:\n
-        {self.image_label.get_contour()}
+        {self.image_label.get_stopline()}
         """
         )
 
@@ -211,5 +250,5 @@ class StopLine(QtWidgets.QDialog):
         elif response == QtWidgets.QMessageBox.Cancel:
             print("LOG : Cancel")
 
-    def get_contour_params(self):
-        return self.image_label.get_contour()
+    def get_stopline(self):
+        return self.image_label.get_stopline()
