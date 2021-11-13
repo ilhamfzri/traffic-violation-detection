@@ -33,14 +33,16 @@ class Parameter:
             "YOLOV5 Small": "yolov5s",
             "YOLOV5 Medium": "yolov5m",
         }
+        self.device = "cpu"
+        self.video_path = ""
 
+        # YOLO Vehicle Detection Params
         self.yolo_imgsz = 250
         self.yolo_stride = "2"
-        self.video_path = ""
         self.yolo_conf = 0.25
         self.yolo_iou = 0.45
         self.yolo_classes = [2, 3, 5, 7]
-        self.yolo_classss_names = {
+        self.yolo_classes_name = {
             2: "Car",
             3: "Motorcycle",
             5: "Bus",
@@ -49,7 +51,8 @@ class Parameter:
         }
         self.yolo_multi_label = False
         self.yolo_max_detection = 500
-        self.device = "cpu"
+
+        # Traffic Light Params
         self.traffic_light_set_view = 0
         self.traffic_light_post_processing = 0
         self.traffic_light_area = [0, 20, 100, 300]
@@ -73,12 +76,30 @@ class Parameter:
             "threshold": 13,
         }
 
-        self.draw_bounding_boxes = True
+        # General
+        self.show_bounding_boxes = True
         self.show_label_and_confedence = True
+        self.show_detection_area = True
+        self.show_stopline = True
+
+        # Tracking Params
         self.use_tracking = "SORT"  # {"No Tracker", "Deep SORT", "SORT"}
 
-        # Need this if you will use deep_sort
-        self.config_deepsort = "configs/deep_sort.yaml"
+        # DeepSORT Params
+        self.deepsort_model_path = "models/ckpt.t7"
+        self.deepsort_max_dist = 0.2
+        self.deepsort_min_confidence = 0.3
+        self.deepsort_max_iou_distance = 0.7
+        self.deepsort_max_age = 70
+        self.deepsort_n_init = 3
+        self.deepsort_nn_budget = 100
         self.deepsort_use_cuda = False
 
-        # Sort
+        # SORT Params
+        self.sort_min_hits = 3
+        self.sort_max_age = 80
+        self.sort_iou_threshold = 0.3
+
+        # Detection Area and Stop Line Params
+        self.detection_area = []
+        self.stopline = []
