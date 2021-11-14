@@ -27,7 +27,7 @@
 # Ilham Fazri - ilhamfazri3rd@gmail.com
 
 import time
-from enum import auto
+from enum import EnumMeta, auto
 from re import L
 from typing import List, Text
 from urllib.request import parse_http_list
@@ -39,6 +39,7 @@ from tvdr.utils.parser import get_config
 from tvdr.utils.params import Parameter
 from tvdr.core.deepsort import DeepSort
 from tvdr.core.sort import Sort
+from tvdr.core.algorithm import detection_area_filter, detection_running_redlight
 from tvdr.utils.general import (
     make_divisible,
     xyxy2xywh,
@@ -95,9 +96,7 @@ class YOLOInference:
             return False
 
     def inference_frame(self, frame_data: np.ndarray):
-
         if self.update_model_params == True:
-
             self.model.conf = self.parameter.yolo_conf
             self.model.iou = self.parameter.yolo_iou
             self.model.classes = self.parameter.yolo_classes
@@ -112,15 +111,21 @@ class YOLOInference:
             .to_numpy()
         )
 
+        # Tracking Algorithm
         if self.parameter.use_tracking == "Deep SORT":
             result = self.tracking_deepsort(self.result, frame_data)
-            frame_data = self.annotator(frame_data, result)
         elif self.parameter.use_tracking == "SORT":
             result = self.tracking_sort(self.result, frame_data.shape)
-            if result.shape[0] > 0:
-                frame_data = self.annotator(frame_data, result)
-        else:
-            frame_data = self.annotator(frame_data, self.result)
+
+        # Filtering Detection Area Object
+        result = detection_area_filter(result, self.parameter.detection_area)
+
+        # Running Red Light Detection
+        violation_result, non_violation_result = detection_running_redlight(
+            result, self.parameter.stopline
+        )
+        frame_data = self.annotator(frame_data, non_violation_result)
+        frame_data = self.annotator(frame_data, violation_result, violation=True)
 
         return frame_data
 
@@ -146,11 +151,28 @@ class YOLOInference:
         combine_result = combine_yolo_sort_result(
             yolo=result, sort=output, frame_shape=frame_shape
         )
-        # combine_result = sort_validity(sort=combine_result, frame_shape=frame_shape)
         return combine_result
 
-    def annotator(self, frame: np.ndarray, result):
+    def annotator(self, frame: np.ndarray, result, violation=False):
+        """violation_type = running_redlight"""
         new_frame = frame.copy()
+
+        if violation:
+            color_box = (0, 0, 255)
+
+        else:
+            color_box = (0, 255, 0)
+
+        if self.parameter.show_detection_area:
+            print(np.array([self.parameter.detection_area])[0].shape)
+            # points = points.astype(np.int32)
+            new_frame = cv2.drawContours(
+                new_frame,
+                [np.array([self.parameter.detection_area])[0]],
+                -1,
+                (0, 255, 0),
+                2,
+            )
 
         if self.parameter.show_stopline:
             start_point = (
@@ -175,7 +197,7 @@ class YOLOInference:
                     img=new_frame,
                     pt1=(int(coordinate[0]), int(coordinate[1])),
                     pt2=(int(coordinate[2]), int(coordinate[3])),
-                    color=(0, 255, 0),
+                    color=color_box,
                     thickness=2,
                 )
 
@@ -189,10 +211,10 @@ class YOLOInference:
             for i in range(0, result.shape[0]):
                 data = result[i]
                 org = (int(data[0]), int(data[1]))
-                label = self.parameter.yolo_classes_name[int(data[5])]
+                label = self.parameter.yolo_classes_name[str(int(data[5]))]
                 if data[6] != None:
                     object_id = data[6]
-                    text = f"#{object_id} {label} {data[4]:.2f}"
+                    text = f"{object_id} {label} {data[4]:.2f}"
                 else:
                     text = f"{label}-{data[4]:.2f}"
                 text_size, _ = cv2.getTextSize(
@@ -204,7 +226,7 @@ class YOLOInference:
                     new_frame,
                     pt1=(int(data[0]), int(data[1])),
                     pt2=(int(data[0] + text_w), int(data[1] - text_h)),
-                    color=(0, 255, 0),
+                    color=color_box,
                     thickness=-1,
                 )
 
