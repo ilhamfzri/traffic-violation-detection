@@ -37,7 +37,7 @@ class Parameter:
         self.video_path = ""
 
         # YOLO Vehicle Detection Params
-        self.yolo_imgsz = 250
+        self.yolo_imgsz = 1080
         self.yolo_stride = "2"
         self.yolo_conf = 0.25
         self.yolo_iou = 0.45
@@ -103,3 +103,9 @@ class Parameter:
         # Detection Area and Stop Line Params
         self.detection_area = []
         self.stopline = []
+
+        # Wrong Way Params
+        self.wrongway_direction_degree = 90
+        self.wrongway_threshold_degree = 20
+        self.wrongway_miss_count = 5  # In second
+        self.wrongway_min_value = 50
