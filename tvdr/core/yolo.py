@@ -35,11 +35,19 @@ from PIL import ImageDraw
 from numpy.core.fromnumeric import shape
 from numpy.lib.function_base import append
 from tvdr.core import sort
-from tvdr.utils.parser import get_config
+from tvdr.core import wrong_way
+from tvdr.core.violation_recorder import ViolationRecorder
+from tvdr.core.wrong_way import WrongWayDetection
 from tvdr.utils.params import Parameter
 from tvdr.core.deepsort import DeepSort
 from tvdr.core.sort import Sort
-from tvdr.core.algorithm import detection_area_filter, detection_running_redlight
+from tvdr.core.algorithm import (
+    detection_area_filter,
+    detection_running_redlight,
+    calculate_center_of_box,
+    cart2pol,
+    pol2cart,
+)
 from tvdr.utils.general import (
     make_divisible,
     xyxy2xywh,
@@ -75,6 +83,9 @@ class YOLOInference:
             self.parameter.deepsort_use_cuda,
         )
 
+        # WrongWay Detection  Initialize
+        self.wrongway = WrongWayDetection(self.parameter)
+
         # SORT Initialize
         self.sort = Sort(
             self.parameter.sort_max_age,
@@ -86,6 +97,9 @@ class YOLOInference:
             imgsz=self.parameter.yolo_imgsz, s=self.parameter.yolo_stride
         )
 
+        self.parameter.output_dir = "outputs"
+        self.violation_recorder = ViolationRecorder(self.parameter)
+
     def load_model(self, model_type: Text = "yolov5s"):
 
         try:
@@ -95,7 +109,11 @@ class YOLOInference:
         except:
             return False
 
-    def inference_frame(self, frame_data: np.ndarray):
+    def inference_frame(self, frame_data: np.ndarray, timestamp_video: int):
+        # x = timestamp_video
+        # print(f"timestamp {x}")
+
+        # Update Model Params
         if self.update_model_params == True:
             self.model.conf = self.parameter.yolo_conf
             self.model.iou = self.parameter.yolo_iou
@@ -104,28 +122,46 @@ class YOLOInference:
             self.model.max_det = self.parameter.yolo_max_detection
             self.update_model_params = False
 
-        self.result = (
+        # Inference Vehicle Detection
+        result = (
             self.model(frame_data, size=self.parameter.yolo_imgsz)
             .pandas()
             .xyxy[0]
             .to_numpy()
         )
 
-        # Tracking Algorithm
-        if self.parameter.use_tracking == "Deep SORT":
-            result = self.tracking_deepsort(self.result, frame_data)
-        elif self.parameter.use_tracking == "SORT":
-            result = self.tracking_sort(self.result, frame_data.shape)
-
         # Filtering Detection Area Object
         result = detection_area_filter(result, self.parameter.detection_area)
+
+        # Tracking Algorithm
+        if self.parameter.use_tracking == "Deep SORT":
+            result = self.tracking_deepsort(result, frame_data)
+        elif self.parameter.use_tracking == "SORT":
+            result = self.tracking_sort(result, frame_data.shape)
 
         # Running Red Light Detection
         violation_result, non_violation_result = detection_running_redlight(
             result, self.parameter.stopline
         )
+
+        # Running Wrong Way Detection
+        self.wrongway.update(result)
+        self.wrongway_violation_data = self.wrongway.get_wrong_way_list()
+
+        # Save running light violation to database
+        self.violation_recorder.write_violation_running_red_light(
+            violation_result, frame_data, timestamp_video
+        )
+
+        #Save Wrong Way Detection
+        self.
+
+        # Annotator Running Red Light
         frame_data = self.annotator(frame_data, non_violation_result)
         frame_data = self.annotator(frame_data, violation_result, violation=True)
+
+        # Update Frame For Video Writer
+        self.violation_recorder.update_video_writer(frame_data)
 
         return frame_data
 
@@ -154,18 +190,46 @@ class YOLOInference:
         return combine_result
 
     def annotator(self, frame: np.ndarray, result, violation=False):
-        """violation_type = running_redlight"""
         new_frame = frame.copy()
-
         if violation:
             color_box = (0, 0, 255)
-
         else:
             color_box = (0, 255, 0)
 
+        ## draw object direction
+        for i in range(0, result.shape[0]):
+            arrow_length = 10
+            data_tracker = result[i]
+            object_id = data_tracker[6]
+
+            # If object direction is wrong way set arrow color to red, else green
+            if object_id in self.wrongway.data_dict.keys():
+                x_center, y_center = calculate_center_of_box(data_tracker[0:4])
+                if data_tracker[6] in self.wrongway_violation_data:
+                    color_direction = (0, 0, 255)
+                else:
+                    color_direction = (0, 255, 0)
+
+                _, phi = cart2pol(
+                    self.wrongway.data_dict[object_id]["total_gx"],
+                    self.wrongway.data_dict[object_id]["total_gy"],
+                )
+
+                pos1 = pol2cart(arrow_length, phi)
+                pos2 = (-pos1[0], -pos1[1])
+
+                new_frame = cv2.arrowedLine(
+                    new_frame,
+                    (int(x_center + pos2[0]), int(y_center + pos2[1])),
+                    (int(x_center + pos1[0]), int(y_center + pos1[1])),
+                    color_direction,
+                    3,
+                    cv2.LINE_AA,
+                    tipLength=0.5,
+                )
+
+        # draw detection area
         if self.parameter.show_detection_area:
-            print(np.array([self.parameter.detection_area])[0].shape)
-            # points = points.astype(np.int32)
             new_frame = cv2.drawContours(
                 new_frame,
                 [np.array([self.parameter.detection_area])[0]],
@@ -174,6 +238,7 @@ class YOLOInference:
                 2,
             )
 
+        # draw stop line
         if self.parameter.show_stopline:
             start_point = (
                 self.parameter.stopline[0][0][0],
@@ -189,6 +254,7 @@ class YOLOInference:
                 new_frame, start_point, end_point, (0, 0, 255), 2, cv2.LINE_AA
             )
 
+        # draw bounding boxes
         if self.parameter.show_bounding_boxes:
             for i in range(0, result.shape[0]):
                 coordinate = result[i]
@@ -201,6 +267,7 @@ class YOLOInference:
                     thickness=2,
                 )
 
+        # draw label and confedence
         if self.parameter.show_label_and_confedence:
 
             font = cv2.FONT_HERSHEY_DUPLEX
@@ -252,4 +319,7 @@ class YOLOInference:
 
     def update_params(self, parameter: Parameter, update_model_params: bool = False):
         self.parameter = parameter
+        self.wrongway.update_params(parameter)
+        parameter.output_dir = "output"
+        self.violation_recorder.update_params(parameter)
         self.update_model_params = update_model_params
