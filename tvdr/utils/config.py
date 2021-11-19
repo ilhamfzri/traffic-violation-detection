@@ -49,6 +49,13 @@ class ConfigLoader(Parameter):
             self.deepsort_nn_budget = deepsort_params["nn_budget"]
             self.deepsort_use_cuda = deepsort_params["use_cuda"]
 
+            # Wrong Way Params
+            wrongway_params = json_data["wrong_way"]
+            self.wrongway_direction_degree = wrongway_params["direction_degree"]
+            self.wrongway_threshold_degree = wrongway_params["threshold_degree"]
+            self.wrongway_miss_count = wrongway_params["miss_count"]
+            self.wrongway_min_value = wrongway_params["min_value_threshold"]
+
             # Read General Params
             general_params = json_data["general"]
             self.device = general_params["device"]
@@ -60,6 +67,7 @@ class ConfigLoader(Parameter):
             self.show_label_and_confedence = general_params["show_label_and_confedence"]
             self.show_detection_area = general_params["show_detection_area"]
             self.show_stopline = general_params["show_stopline"]
+
             return self
 
     def save_config(self, json_path: str, parameter: Parameter):
@@ -107,6 +115,13 @@ class ConfigLoader(Parameter):
         tracking_params["sort"] = sort_params
         tracking_params["deepsort"] = deepsort_params
 
+        # Wrong Way Params
+        wrongway_params = {}
+        wrongway_params["direction_degree"] = self.wrongway_direction_degree
+        wrongway_params["threshold_degree"] = self.wrongway_threshold_degree
+        wrongway_params["miss_count"] = self.wrongway_miss_count
+        wrongway_params["min_value_threshold"] = self.wrongway_min_value
+
         # General Params
         general_params = {}
         general_params["device"] = self.device
@@ -121,6 +136,7 @@ class ConfigLoader(Parameter):
 
         json_data["general"] = general_params
         json_data["yolo_vehicle_detection"] = yolo_params
+        json_data["wrong_way"] = wrongway_params
         json_data["traffic_light"] = traffic_light_params
         json_data["tracking"] = tracking_params
 
