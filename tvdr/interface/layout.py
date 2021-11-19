@@ -34,9 +34,13 @@ import numpy as np
 
 from PySide2 import QtWidgets, QtGui
 from PySide2.QtCore import QTimer, QWaitCondition, Qt, Slot
-from tvdr.utils import Parameter
-from tvdr.core import YOLOModel, TrafficLightDetection
+from tvdr.utils.config import ConfigLoader
+from tvdr.utils.params import Parameter
+from tvdr.core import YOLOInference, TrafficLightDetection
 from tvdr.interface.traffic_light import TrafficLight
+from tvdr.interface.detection_area import DetectionArea
+from tvdr.interface.stop_line import StopLine
+from tvdr.interface.wrong_way import WrongWayConfig
 
 
 class MainLayout(QtWidgets.QWidget):
@@ -46,24 +50,21 @@ class MainLayout(QtWidgets.QWidget):
         self.parameter = Parameter()
 
         # Initialize YOLO
-        self.yolo = YOLOModel(device="cpu")
+        self.yolo = YOLOInference(self.parameter)
 
         # Initialize Traffic Light State Detection
         self.tld = TrafficLightDetection(self.parameter)
 
-        # self.layout = QtWidgets.QFormLayout()
         self.layout = QtWidgets.QGridLayout()
         self.top_layout = self.set_top_layout()
         self.left_layout = self.set_left_layout()
         self.right_layout = self.set_right_layout()
 
-        self.layout.setAlignment(QtGui.Qt.AlignTop)
-        self.layout.addLayout(self.top_layout, 0, 0, 1, 2)
-        self.layout.addLayout(self.left_layout, 1, 0, Qt.AlignLeft)
-        self.layout.addLayout(self.right_layout, 1, 1, 1, 3)
-        self.layout.setRowStretch(0, 4)
-        self.layout.setColumnStretch(0, 1)
-        self.layout.setColumnStretch(1, 1)
+        # self.layout.setAlignment(QtGui.Qt.AlignTop)
+        self.layout.addLayout(self.top_layout, 0, 0, 1, 8, Qt.AlignTop)
+        self.layout.addLayout(self.left_layout, 1, 0, 1, 2, Qt.AlignLeft)
+        self.layout.addLayout(self.right_layout, 1, 2, 1, 6, Qt.AlignCenter)
+
         self.layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.setLayout(self.layout)
 
@@ -76,19 +77,19 @@ class MainLayout(QtWidgets.QWidget):
         styleLabel = QtWidgets.QLabel("&Style :")
         styleLabel.setBuddy(styleComboBox)
 
-        self.useStylePaletteCheckBox = QtWidgets.QCheckBox(
-            "&Use style's standard palette"
-        )
-        self.useStylePaletteCheckBox.setChecked(True)
-
-        styleComboBox.activated[str].connect(self.changeStyle)
-        self.useStylePaletteCheckBox.toggled.connect(self.changePalette)
+        self.drawingBoxCheckBox = QtWidgets.QCheckBox("Show Bounding Boxes")
+        self.showLabelCheckBox = QtWidgets.QCheckBox("Show Label & Confidence")
+        self.showDetectionAreaCheckBox = QtWidgets.QCheckBox("Show Detection Area")
+        self.showStopLineCheckBox = QtWidgets.QCheckBox("Show Stop Line")
 
         topLayout = QtWidgets.QHBoxLayout()
         topLayout.addWidget(styleLabel)
         topLayout.addWidget(styleComboBox)
         topLayout.addStretch(1)
-        topLayout.addWidget(self.useStylePaletteCheckBox)
+        topLayout.addWidget(self.drawingBoxCheckBox)
+        topLayout.addWidget(self.showLabelCheckBox)
+        topLayout.addWidget(self.showDetectionAreaCheckBox)
+        topLayout.addWidget(self.showStopLineCheckBox)
 
         return topLayout
 
@@ -106,6 +107,8 @@ class MainLayout(QtWidgets.QWidget):
         v_layout.addWidget(self.inference_fps_label)
         v_layout.addWidget(self.inference_progress_slider)
         v_layout.addWidget(self.inference_log)
+
+        self.set_init_value_main_configuration()
 
         information_combobox.setLayout(v_layout)
         return information_combobox
@@ -135,7 +138,7 @@ class MainLayout(QtWidgets.QWidget):
         convert_to_Qt_format = QtGui.QImage(
             rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888
         )
-        p = convert_to_Qt_format.scaled(3000, 500, Qt.KeepAspectRatio)
+        p = convert_to_Qt_format.scaled(4000, 500, Qt.KeepAspectRatio)
         return p
 
     def set_image_layout(self):
@@ -150,6 +153,7 @@ class MainLayout(QtWidgets.QWidget):
         """set left layout for configuration"""
 
         v_layout = QtWidgets.QVBoxLayout()
+        v_layout.addWidget(self.config_loader())
         v_layout.addWidget(self.video_configuration())
         v_layout.addWidget(self.model_yolo_configuration())
         v_layout.addWidget(self.main_configuration())
@@ -162,6 +166,56 @@ class MainLayout(QtWidgets.QWidget):
         h_layout.addWidget(self.set_image_layout())
         h_layout.addWidget(inference_information_layout)
         return h_layout
+
+    def config_loader(self):
+        h_layout = QtWidgets.QHBoxLayout()
+        groupbox = QtWidgets.QGroupBox("Config Loader")
+
+        self.load_config_button = QtWidgets.QPushButton("Load")
+        self.save_config_button = QtWidgets.QPushButton("Save")
+
+        self.load_config_button.clicked.connect(self.load_config)
+        self.save_config_button.clicked.connect(self.save_config)
+
+        h_layout.addWidget(self.load_config_button)
+        h_layout.addWidget(self.save_config_button)
+
+        groupbox.setLayout(h_layout)
+        return groupbox
+
+    def load_config(self):
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Open Config File",
+            "",
+            "Config File (*.json)",
+            options=options,
+        )
+
+        if fileName:
+            cfg = ConfigLoader()
+            self.parameter = cfg.load_parser(fileName)
+            self.set_init_value_main_configuration()
+            self.update_parameter()
+
+    def save_config(self):
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        fileName, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "Save Config File",
+            "",
+            "Config File (*.json)",
+            options=options,
+        )
+        if fileName:
+            if fileName[-5:] != ".json":
+                fileName = f"{fileName}.json"
+
+            cfg = ConfigLoader()
+            cfg.save_config(fileName, self.parameter)
 
     def video_configuration(self):
         """set video configuration for loading video"""
@@ -211,34 +265,81 @@ class MainLayout(QtWidgets.QWidget):
         self.main_configuration_layout.setAlignment(QtCore.Qt.AlignTop)
         self.main_configuration_layout.setStretch(1, 1)
 
+        self.main_configuration_layout.addLayout(self.object_tracker_configuration())
         self.main_configuration_layout.addLayout(self.object_threshold_configuration())
         self.main_configuration_layout.addLayout(self.iou_threshold_configuration())
         self.main_configuration_layout.addLayout(self.max_detection_configuration())
 
         # Set Init YOLO Configuration Value
-        self.set_init_value_main_configuration()
 
         self.main_configuration_groupbox = QtWidgets.QGroupBox(
             "Parameter Configuration"
         )
-
         self.set_button_classes = QtWidgets.QPushButton("Change Classes")
         self.set_button_classes.clicked.connect(self.set_msgbox_classes)
 
-        self.set_traffic_light_area = QtWidgets.QPushButton("Set Traffic Lights Area")
+        self.set_wrongway_config_button = QtWidgets.QPushButton("Wrong Way Config")
+        self.set_wrongway_config_button.clicked.connect(self.set_wrongway_config)
+
+        self.set_traffic_light_area = QtWidgets.QPushButton("Traffic Light Recognition")
         self.set_traffic_light_area.clicked.connect(self.set_traffic_light)
+
+        self.set_detection_area_button = QtWidgets.QPushButton("Set Detection Area")
+        self.set_detection_area_button.clicked.connect(self.set_detection_area)
+
+        self.set_stop_line_button = QtWidgets.QPushButton("Set Stop Line")
+        self.set_stop_line_button.clicked.connect(self.set_stop_line)
 
         self.set_button_update_parameters = QtWidgets.QPushButton("Apply Parameters")
         self.set_button_update_parameters.clicked.connect(self.apply_parameters)
 
         self.main_configuration_layout.addWidget(self.set_button_classes)
+        self.main_configuration_layout.addWidget(self.set_wrongway_config_button)
         self.main_configuration_layout.addWidget(self.set_traffic_light_area)
+        self.main_configuration_layout.addWidget(self.set_detection_area_button)
+        self.main_configuration_layout.addWidget(self.set_stop_line_button)
         self.main_configuration_layout.addWidget(self.set_button_update_parameters)
 
         self.main_configuration_groupbox.setAlignment(QtCore.Qt.AlignTop)
         self.main_configuration_groupbox.setLayout(self.main_configuration_layout)
 
         return self.main_configuration_groupbox
+
+    def set_wrongway_config(self):
+        if self.parameter.video_path == "":
+            print("here")
+            self.create_msg_box("Please set video first!", type_msg="warning")
+
+        else:
+            self.wrongway_config = WrongWayConfig(self.parameter)
+            self.wrongway_config.exec_()
+            if self.wrongway_config.result() == 1:
+                wrongway_params = self.wrongway_config.get_params()
+                self.parameter.wrongway_direction_degree = wrongway_params[
+                    "direction_degree"
+                ]
+                self.parameter.wrongway_threshold_degree = wrongway_params[
+                    "threshold_degree"
+                ]
+                self.parameter.wrongway_min_value = wrongway_params["min_value"]
+                self.parameter.wrongway_miss_count = wrongway_params["miss_count"]
+                self.update_parameter()
+
+    def set_stop_line(self):
+        self.stop_line = StopLine(self.parameter.video_path, self.parameter.stopline)
+        self.stop_line.exec_()
+        if self.stop_line.result() == 1:
+            self.stopline_params = self.stop_line.get_stopline()
+            self.parameter.stopline = self.stopline_params.tolist()
+
+    def set_detection_area(self):
+        self.detection_area = DetectionArea(
+            self.parameter.video_path, self.parameter.detection_area
+        )
+        self.detection_area.exec_()
+        if self.detection_area.result() == 1:
+            self.detection_area_params = self.detection_area.get_contour_params()
+            self.parameter.detection_area = self.detection_area_params.tolist()
 
     def set_traffic_light(self):
         if self.parameter.video_path != "":
@@ -252,6 +353,36 @@ class MainLayout(QtWidgets.QWidget):
         self.object_threshold_spinbox.setValue(self.parameter.yolo_conf)
         self.iou_threshold_spinbox.setValue(self.parameter.yolo_iou)
         self.max_detection_spinbox.setValue(self.parameter.yolo_max_detection)
+
+        self.drawingBoxCheckBox.setChecked(self.parameter.show_bounding_boxes)
+        self.showLabelCheckBox.setChecked(self.parameter.show_label_and_confedence)
+        self.showDetectionAreaCheckBox.setChecked(self.parameter.show_detection_area)
+        self.showStopLineCheckBox.setChecked(self.parameter.show_stopline)
+
+        self.lineedit_video_path.setText(self.parameter.video_path)
+        self.detection_area_params = self.parameter.detection_area
+        self.stopline_params = self.parameter.stopline
+
+        if self.parameter.use_tracking == "No Tracker":
+            self.tracker_combobox.setCurrentIndex(0)
+
+        elif self.parameter.use_tracking == "Deep SORT":
+            self.tracker_combobox.setCurrentIndex(1)
+
+        else:
+            self.tracker_combobox.setCurrentIndex(2)
+
+    def object_tracker_configuration(self):
+        h_tracker_layout = QtWidgets.QHBoxLayout()
+        self.tracker_combobox = QtWidgets.QComboBox()
+        self.tracker_combobox.addItem("No Tracker")
+        self.tracker_combobox.addItem("Deep SORT")
+        self.tracker_combobox.addItem("SORT")
+
+        h_tracker_layout.addWidget(QtWidgets.QLabel("Tracker"))
+        h_tracker_layout.addWidget(self.tracker_combobox)
+
+        return h_tracker_layout
 
     def object_threshold_configuration(self):
         self.object_threshold_layout = QtWidgets.QHBoxLayout()
@@ -405,13 +536,15 @@ class MainLayout(QtWidgets.QWidget):
         self.parameter.yolo_iou = self.iou_threshold_spinbox.value()
         self.parameter.yolo_max_detection = int(self.max_detection_spinbox.value())
 
-        self.yolo.update_params(
-            conf=self.parameter.yolo_conf,
-            iou=self.parameter.yolo_iou,
-            classes=self.parameter.yolo_classes,
-            multi_label=self.parameter.yolo_multi_label,
-            max_detection=self.parameter.yolo_max_detection,
-        )
+        self.parameter.show_bounding_boxes = self.drawingBoxCheckBox.isChecked()
+        self.parameter.show_label_and_confedence = self.showLabelCheckBox.isChecked()
+        self.parameter.show_detection_area = self.showDetectionAreaCheckBox.isChecked()
+        self.parameter.show_stopline = self.showStopLineCheckBox.isChecked()
+        self.parameter.use_tracking = self.tracker_combobox.currentText()
+
+        print(self.parameter.show_stopline)
+
+        self.yolo.update_params(self.parameter, update_model_params=True)
 
     @Slot()
     def start_inference(self):
@@ -459,13 +592,14 @@ class MainLayout(QtWidgets.QWidget):
         # processing to get color of traffic light
         status = self.tld.detect_state(self.traffic_light_frame)
 
-        # resize frame for yolo inference
-        frame_resize = cv2.resize(
-            frame, (int(frame.shape[1] * 0.5), int(frame.shape[0] * 0.5))
+        # get current duration
+        timestamp = int(
+            self.vid.get(cv2.CAP_PROP_POS_FRAMES) / self.vid.get(cv2.CAP_PROP_FPS)
         )
+        print("FRAME" + str(timestamp))
 
         # inference yolov5 and count processing time
-        new_frame = self.yolo.inference_frame(frame_resize)
+        new_frame = self.yolo.inference_frame(frame, timestamp)
         end_time = time.time()
 
         # update inference information
@@ -474,8 +608,7 @@ class MainLayout(QtWidgets.QWidget):
             self.vid.get(cv2.CAP_PROP_POS_FRAMES) / self.parameter.frame_count
         ) * 100
         self.traffic_light_state_label.setText(f"Traffic Light State \t: {status}")
-        # self.inference_fps_label.setText(f"Inference FPS \t\t: {fps:.2f}")
-        self.inference_fps_label.setText(str(self.parameter.video_fps))
+        self.inference_fps_label.setText(f"Inference FPS \t\t: {fps:.2f}")
         self.inference_progress_slider.setValue(int(progress_value))
 
         # convert and shows new frame inference in pyqt5 label
@@ -484,6 +617,16 @@ class MainLayout(QtWidgets.QWidget):
 
     def update_parameter(self):
         self.tld.update_parameters(self.parameter)
+        self.yolo.update_params(self.parameter, update_model_params=True)
+
+    def create_msg_box(self, msg_text, type_msg="warning"):
+        msg = QtWidgets.QMessageBox()
+        msg.setText(msg_text)
+        if type_msg == "warning":
+            msg.setIcon(QtWidgets.QMessageBox.Warning)
+
+        msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        msg.exec_()
 
 
 class DatabaseLayout(QtWidgets.QWidget):
