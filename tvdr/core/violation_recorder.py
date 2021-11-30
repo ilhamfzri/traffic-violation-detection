@@ -33,6 +33,7 @@ import json
 
 from tvdr.utils.params import Parameter
 from tvdr.utils.path import create_folder
+from tvdr.core.algorithm import cart2pol, pol2cart, calculate_center_of_box
 
 
 class ViolationRecorder:
@@ -41,8 +42,8 @@ class ViolationRecorder:
     def __init__(self, parameter: Parameter):
         self.update_params(parameter)
         self.list_object_violation_running_redlight = {}
-        self.list_object_violation_wrong_way = []
-        self.list_object_violation_not_using_helmet = []
+        self.list_object_violation_wrong_way = {}
+        self.list_object_violation_not_using_helmet = {}
         self.json_data = {}
 
     def update_params(self, parameter: Parameter):
@@ -84,13 +85,35 @@ class ViolationRecorder:
         # Update frame to video writer
         self.video_writer.write(img)
 
-    def update_violation_wrong_way(
-        self,
-        img0,
-        img1,
-        result,
+    def write_violation_wrongway(
+        self, result, img0, timestamp_video, object_direction_data, violation_data
     ):
-        pass
+        for i in range(0, result.shape[0]):
+            object_id = result[i][6]
+            if (
+                object_id in violation_data
+                and object_id not in self.list_object_violation_wrong_way
+            ):
+                timestamp = int(time.time())
+                img_proof_path = os.path.join(self.wrongway_dir, f"IMG_{timestamp}.jpg")
+                img_proof = self.annotator_violation_wrongway(
+                    result[i][0:4], img0.copy(), object_direction_data[object_id]
+                )
+                cv2.imwrite(img_proof_path, img_proof)
+
+                minutes = timestamp_video // 60
+                seconds = timestamp_video % 60
+
+                violation_record = {}
+                violation_record["vehicle_type"] = self.parameter.yolo_classes_name[
+                    str(int(result[i][5]))
+                ]
+                violation_record["img_proof"] = img_proof_path
+                violation_record["timestamp"] = f"{minutes:02}:{seconds:02}"
+
+                self.list_object_violation_wrong_way[object_id] = violation_record
+
+                self.database_writer()
 
     def write_violation_running_red_light(self, result, img0, timestamp_video):
         for i in range(0, result.shape[0]):
@@ -100,9 +123,7 @@ class ViolationRecorder:
                 img_proof_path = os.path.join(
                     self.running_redlight_dir, f"IMG_{timestamp}.jpg"
                 )
-                img_proof = self.annotator(
-                    result[i], img0.copy(), violation_type="running_redlight"
-                )
+                img_proof = self.annotator_violation_redlight(result[i], img0.copy())
                 cv2.imwrite(img_proof_path, img_proof)
 
                 # self.list_object_violation_running_redlight.append(object_id)
@@ -126,8 +147,10 @@ class ViolationRecorder:
     def update_violation_not_using_helmet(self, img0, img1, result):
         pass
 
-    def annotator(self, xyxy, img, violation_type):
+    def annotator_violation_wrongway(self, xyxy, img, data):
         img_new = img.copy()
+
+        print(img_new)
         img_new = cv2.rectangle(
             img=img_new,
             pt1=(int(xyxy[0]), int(xyxy[1])),
@@ -136,12 +159,45 @@ class ViolationRecorder:
             thickness=2,
         )
 
+        x_center, y_center = calculate_center_of_box(xyxy)
+        _, phi = cart2pol(
+            data["total_gx"],
+            data["total_gy"],
+        )
+
+        pos1 = pol2cart(5, phi)
+        pos2 = (-pos1[0], -pos1[1])
+
+        img_new = cv2.arrowedLine(
+            img_new,
+            (int(x_center + pos2[0]), int(y_center + pos2[1])),
+            (int(x_center + pos1[0]), int(y_center + pos1[1])),
+            (0, 0, 255),
+            3,
+            cv2.LINE_AA,
+            tipLength=0.5,
+        )
+
+        return img_new
+
+    def annotator_violation_redlight(self, xyxy, img):
+        img_new = img.copy()
+        img_new = cv2.rectangle(
+            img=img_new,
+            pt1=(int(xyxy[0]), int(xyxy[1])),
+            pt2=(int(xyxy[2]), int(xyxy[3])),
+            color=(0, 0, 255),
+            thickness=2,
+        )
+        print(img_new)
+
         return img_new
 
     def database_writer(self):
         self.json_data[
             "running_red_light"
         ] = self.list_object_violation_running_redlight
+        self.json_data["wrong_way "] = self.list_object_violation_wrong_way
 
         with open(self.json_path, "w", encoding="utf-8") as json_file:
             json.dump(self.json_data, json_file, indent=3)
