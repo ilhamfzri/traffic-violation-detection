@@ -65,6 +65,9 @@ class PainterArea(QLabel):
         QLabel.__init__(self, parent)
         self.list_point = []
 
+    def set_ratio_img(self, ratio):
+        self.ratio_img = ratio
+
     def set_point(self, list_point=[]):
         self.list_point = list_point
         self.draw_area()
@@ -80,20 +83,21 @@ class PainterArea(QLabel):
         self.update_point_viewer()
 
     def draw_area(self):
-        points = np.empty((0, 1, 2))
-        for i, point in enumerate(self.list_point):
-            point_arr = np.array([[point.x(), point.y()]]).reshape(1, 1, 2)
-            points = np.append(points, point_arr, axis=0)
+        if len(self.list_point) > 1:
+            points = np.empty((0, 1, 2))
+            for i, point in enumerate(self.list_point):
+                point_arr = np.array([[point.x(), point.y()]]).reshape(1, 1, 2)
+                points = np.append(points, point_arr, axis=0)
 
-        points = points.astype(np.int32)
+            points = points.astype(np.int32)
 
-        shapes = self.cv_img.copy()
-        shapes = cv2.drawContours(shapes, [points], -1, (0, 255, 0), 2)
+            shapes = self.cv_img.copy()
+            shapes = cv2.drawContours(shapes, [points], -1, (0, 255, 0), 2)
 
-        self.qimage = self.convert_cv_qt(shapes)
-        self.qpixmap_data = QtGui.QPixmap.fromImage(self.qimage)
+            self.qimage = self.convert_cv_qt(shapes)
+            self.qpixmap_data = QtGui.QPixmap.fromImage(self.qimage)
 
-        self.setPixmap(self.qpixmap_data)
+            self.setPixmap(self.qpixmap_data)
 
     def get_contour(self):
         points = np.empty((0, 1, 2))
@@ -136,14 +140,26 @@ class PainterArea(QLabel):
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
         convert_to_Qt_format = QtGui.QImage(
-            rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888
+            rgb_image.data,
+            w,
+            h,
+            bytes_per_line,
+            QtGui.QImage.Format_RGB888,
         )
-        return convert_to_Qt_format
+
+        h_new = h / self.ratio_img
+        w_new = w / self.ratio_img
+
+        p = convert_to_Qt_format.scaled(w_new, h_new, Qt.KeepAspectRatio)
+        return p
 
     def mousePressEvent(self, event):
         self.current_pos = event.pos()
         point = event.pos()
-        self.list_point.append(point)
+        point_new = QtCore.QPoint(
+            point.x() * self.ratio_img, point.y() * self.ratio_img
+        )
+        self.list_point.append(point_new)
         self.update_point_viewer()
         super().mousePressEvent(event)
 
@@ -153,6 +169,8 @@ class DetectionArea(QtWidgets.QDialog):
         super().__init__()
         main_v_layout = QtWidgets.QVBoxLayout()
         main_h_layout = QtWidgets.QHBoxLayout()
+
+        self.size_window_h = 600
 
         list_point = []
         for point in current_countour:
@@ -171,6 +189,8 @@ class DetectionArea(QtWidgets.QDialog):
             f"Resolution : {self.frame_data.shape}"
         )
         # self.mouse_pos_label = QtWidgets.QLabel(f"Mouse Position : (0,0)")
+
+        self.ratio = self.frame_data.shape[0] / self.size_window_h
         h_layout_video_size_and_pointer.addWidget(self.frame_size_information)
         # h_layout_video_size_and_pointer.addWidget(self.mouse_pos_label)
 
@@ -184,6 +204,7 @@ class DetectionArea(QtWidgets.QDialog):
 
         # Set Image
         self.image_label = PainterArea(self)
+        self.image_label.set_ratio_img(self.ratio)
         self.image_label.set_frame(self.frame_data)
         self.image_label.set_point(list_point)
 
@@ -214,11 +235,6 @@ class DetectionArea(QtWidgets.QDialog):
         self.setLayout(main_v_layout)
 
         self.setWindowModality(QtCore.Qt.ApplicationModal)
-
-    # def update_mouse_pos(self):
-    #     self.mouse_pos_label.setText(
-    #         f"Mouse Position : ({self.image_label.current_pos.x()},{self.image_label.current_pos.y()})"
-    #     )
 
     def update_frame(self):
         frame_position = self.slider_video.value()
