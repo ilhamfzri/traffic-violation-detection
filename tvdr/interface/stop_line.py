@@ -63,6 +63,9 @@ class PainterLine(QLabel):
         self.current_pos = QPoint()
         self.setText("This text does not appear")
 
+    def set_ratio_img(self, ratio):
+        self.ratio_img = ratio
+
     def set_frame(self, cv_img):
         self.cv_img = cv_img
         self.qimage = self.convert_cv_qt(cv_img)
@@ -136,12 +139,20 @@ class PainterLine(QLabel):
         convert_to_Qt_format = QtGui.QImage(
             rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888
         )
-        return convert_to_Qt_format
+        h_new = h / self.ratio_img
+        w_new = w / self.ratio_img
+
+        p = convert_to_Qt_format.scaled(w_new, h_new, Qt.KeepAspectRatio)
+        return p
 
     def mousePressEvent(self, event):
         point = event.pos()
+        point_new = QtCore.QPoint(
+            point.x() * self.ratio_img, point.y() * self.ratio_img
+        )
+
         if len(self.list_point) < 2:
-            self.list_point.append(point)
+            self.list_point.append(point_new)
 
         self.update_point_viewer()
         super().mousePressEvent(event)
@@ -153,11 +164,11 @@ class StopLine(QtWidgets.QDialog):
         main_v_layout = QtWidgets.QVBoxLayout()
         main_h_layout = QtWidgets.QHBoxLayout()
 
+        self.size_window_h = 600
+
         list_point = []
         for point in current_stopline:
             list_point.append(QPoint(point[0][0], point[0][1]))
-
-        print(list_point)
 
         # Read Video Data and Information
         self.vid = cv2.VideoCapture(video_path)
@@ -169,9 +180,13 @@ class StopLine(QtWidgets.QDialog):
         self.frame_size_information = QtWidgets.QLabel(
             f"Resolution : {self.frame_data.shape}"
         )
+
+        self.ratio = self.frame_data.shape[0] / self.size_window_h
+
+        # Count ratio between window height and image height
+
         # self.mouse_pos_label = QtWidgets.QLabel(f"Mouse Position : (0,0)")
         h_layout_video_size_and_pointer.addWidget(self.frame_size_information)
-        # h_layout_video_size_and_pointer.addWidget(self.mouse_pos_label)
 
         # Set Slider
         self.slider_video = QtWidgets.QSlider()
@@ -183,6 +198,7 @@ class StopLine(QtWidgets.QDialog):
 
         # Set Image
         self.image_label = PainterLine(self)
+        self.image_label.set_ratio_img(self.ratio)
         self.image_label.set_frame(self.frame_data)
         self.image_label.set_point(list_point)
 
