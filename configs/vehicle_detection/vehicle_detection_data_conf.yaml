@@ -1,0 +1,8 @@
+train: Vehicle_Detection_Dataset/images/train
+val:  Vehicle_Detection_Dataset/images/val
+
+# number of classes
+nc: 5
+
+# class names
+names: ["car","motorcycle", "bus","truck","bicycle"]
