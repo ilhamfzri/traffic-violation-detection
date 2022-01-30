@@ -3,54 +3,38 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as mtick
 
-# COCO Instances per Category
-coco = {"mobil": 45799, "motor": 9096, "bus": 6354, "truk": 10388, "sepeda": 7429}
+# GTA V Instances per Category
+gtav = {"mobil": 813, "motor": 918, "bus": 26, "truk": 135, "sepeda": 6}
 
-# COCO Image per Category
-coco_image_per_category = {
-    "1": 62.74661883755878,
-    "2": 28.70715982354937,
-    "3": 7.261621988462844,
-    "4": 1.168258277182607,
-    "5": 0.1163410732464007,
+# GTA V Image per Category
+gtav_image_per_category = {
+    "1": 32.59423503325942,
+    "2": 48.78048780487805,
+    "3": 16.186252771618626,
+    "4": 2.4390243902439024,
+    "5": 0.0,
 }
 
-# COCO Image per Instance
-coco_image_per_instance = {
-    1: 33.7922342333608,
-    2: 17.460856076397306,
-    3: 11.87648456057007,
-    4: 8.35716709486645,
-    5: 6.500557467642638,
-    6: 4.561539580202627,
-    7: 3.38843375830142,
-    8: 2.7243201318532164,
-    9: 2.4431625381744144,
-    10: 1.7790489117262105,
-    11: 1.4397207814242086,
-    12: 1.1828009113384073,
-    13: 0.998594212031606,
-    14: 1.2118861796500073,
-    15: 0.7610645208202046,
-    16: 0.4459741141112027,
-    17: 0.25207232536720153,
-    18: 0.22783460177420137,
-    19: 0.15512143099520093,
-    20: 0.09695089437200058,
-    21: 0.05817053662320035,
-    22: 0.0678656260604004,
-    23: 0.05817053662320035,
-    24: 0.0339328130302002,
-    25: 0.009695089437200058,
-    26: 0.019390178874400116,
-    27: 0.014542634155800087,
-    28: 0.024237723593000145,
-    29: 0.004847544718600029,
-    30: 0.029085268311600174,
-    31: 0.009695089437200058,
-    33: 0.004847544718600029,
-    38: 0.004847544718600029,
-    40: 0.004847544718600029,
+# GTA V Image per Instance
+gtav_image_per_instance = {
+    1: 14.855875831485587,
+    2: 18.403547671840354,
+    3: 15.299334811529933,
+    4: 13.303769401330376,
+    5: 11.973392461197339,
+    6: 8.647450110864744,
+    7: 6.651884700665188,
+    8: 2.882483370288248,
+    9: 2.4390243902439024,
+    10: 2.6607538802660753,
+    11: 0.4434589800443459,
+    12: 0.6651884700665188,
+    13: 0.22172949002217296,
+    14: 0.22172949002217296,
+    15: 0.6651884700665188,
+    16: 0.22172949002217296,
+    17: 0.22172949002217296,
+    18: 0.22172949002217296,
 }
 
 
@@ -87,7 +71,9 @@ def dataset_distribution_bar(data):
     show_values(ax)
 
     # ax.text("motor".name, "motor".tip, 5, color="black", ha="center")
-    plt.title("MS COCO Dataset\nDistribusi Jumlah Objek Per Kategori", weight="bold")
+    plt.title(
+        "GTA V Vehicle Dataset\nDistribusi Jumlah Objek Per Kategori", weight="bold"
+    )
     plt.show()
 
 
@@ -100,7 +86,7 @@ def dataset_distribution_line(data):
     ax.set(xlabel="Jumlah Kategori", ylabel="Persentase Gambar")
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-    plt.title("MS COCO Dataset\nGambar Per Kategori", weight="bold")
+    plt.title("GTA V Vehicle Dataset\nGambar Per Kategori", weight="bold")
     plt.show()
 
 
@@ -113,16 +99,16 @@ def dataset_distribution_line2(data):
     ax.set(xlabel="Jumlah Objek", ylabel="Persentase Gambar")
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-    plt.title("MS COCO Dataset\nGambar Per Objek", weight="bold")
+    plt.title("GTA V Vehicle Dataset\nGambar Per Objek", weight="bold")
     plt.show()
 
 
 if __name__ == "__main__":
-    # COCO Instances per Category Plot
-    dataset_distribution_bar(coco)
+    # GTAV Instances per Category Plot
+    dataset_distribution_bar(gtav)
 
-    # COCO Image per Category
-    # dataset_distribution_line(coco_image_per_category)
+    # GTAV Image per Category
+    dataset_distribution_line(gtav_image_per_category)
 
-    # COCO Instance per Category
-    # dataset_distribution_line2(coco_image_per_instance)
+    # GTAV Instance per Category
+    dataset_distribution_line2(gtav_image_per_instance)
