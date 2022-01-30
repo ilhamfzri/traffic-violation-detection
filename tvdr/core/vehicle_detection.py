@@ -97,6 +97,9 @@ class VehicleDetection:
         result = result[0]
         result[:, :4] = scale_coords(im.shape[2:], result[:, :4], img0.shape).round()
 
+        if result.is_tensor:
+            result = result.cpu
+
         result = result.numpy()
 
         # Tracking algorithm
