@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-from tvdr.utils import Parameter
+from tvdr.utils.params import Parameter
 
 
 class TrafficLightDetection:
@@ -52,13 +52,15 @@ class TrafficLightDetection:
 
         # return traffic light state based on number of pixel threshold
         if self.red_light_count >= self.red_light["threshold"]:
+            self.last_state = "Red"
             return "Red"
 
         elif self.green_light_count >= self.green_light["threshold"]:
+            self.last_state = "Green"
             return "Green"
 
         else:
-            return "Undefined"
+            return self.last_state
 
     def get_red_light_segmentation(self):
         return self.image_red_light
