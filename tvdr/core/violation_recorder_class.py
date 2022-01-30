@@ -249,7 +249,7 @@ class ViolationRecorderMain:
         out_video_path = os.path.join(output_dir, f"result.avi")
         self.video_writer = cv2.VideoWriter(
             out_video_path,
-            cv2.VideoWriter_fourcc("M", "J", "P", "G"),
+            -1,
             fps=fps,
             frameSize=(width, height),
         )

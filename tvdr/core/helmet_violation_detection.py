@@ -209,7 +209,7 @@ class HelmetViolationDetection:
     def load_model(self):
         # Check inference device
         if self.device == "gpu":
-            if torch.cuda.is_available() != False:
+            if torch.cuda.is_available() == False:
                 logging.warning(f"{logging_root}: CUDA not available!, change to CPU")
                 self.select_device = "cpu"
             else:

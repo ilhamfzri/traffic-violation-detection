@@ -97,8 +97,8 @@ class VehicleDetection:
         result = result[0]
         result[:, :4] = scale_coords(im.shape[2:], result[:, :4], img0.shape).round()
 
-        if result.is_tensor:
-            result = result.cpu
+        if result.is_cuda:
+            result = result.cpu()
 
         result = result.numpy()
 
@@ -118,7 +118,7 @@ class VehicleDetection:
         try:
             # Check inference device
             if self.device == "gpu":
-                if torch.cuda.is_available() != False:
+                if torch.cuda.is_available() == False:
                     logging.warning(
                         f"{logging_root}: CUDA not available!, change to CPU"
                     )

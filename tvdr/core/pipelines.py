@@ -65,7 +65,7 @@ class TrafficViolationDetectionPipelines:
         # self.update_parameter(parameter)
 
     def update(self, image):
-
+        time1 = time.time()
         # Check if model vehicle detection is not loaded then load
         if self.vd.model_loaded == False:
             self.vd.load_model()
@@ -106,7 +106,7 @@ class TrafficViolationDetectionPipelines:
             checkpoint5 = time.time()
 
         if PROFILING_PROCESS:
-            os.system("cls" if os.name == "nt" else "clear")
+            # os.system("cls" if os.name == "nt" else "clear")
             print(f"Task    \t\t\t\t| Time (ms)\t|")
             print(
                 f"Vehicle Detection \t\t\t| {(checkpoint2-checkpoint1)*1000:.1f}\t\t|"
@@ -131,6 +131,8 @@ class TrafficViolationDetectionPipelines:
         if len(result_rrvd) > 0:
             print(f"Running Red Light Violation : {result_rrvd}")
 
+        annotate_time0 = time.time()
+
         result_final = self.vr.detection_combiner(
             vehicle_detection_result=result_vd,
             direction_data=direction_data,
@@ -140,6 +142,11 @@ class TrafficViolationDetectionPipelines:
         )
 
         image_out = self.vr.annotate_result(image, result_final)
+        annotate_timef = time.time()
+
+        print((annotate_timef - annotate_time0) * 1000)
+        timef = time.time()
+        print(f"SS : {(timef-time1)*1000}")
         return image_out
 
     def update_parameter(self, parameter: Parameter):
