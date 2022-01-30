@@ -232,7 +232,7 @@ class HelmetViolationDetection:
 
     def load_parameters(self, parameter: Parameter):
         # Load parameters
-        self.device = "cpu"
+        self.device = parameter.device
         self.model_path = parameter.hv_model_path
         self.min_age = parameter.hv_min_age
         self.conf_thres = parameter.hv_conf
