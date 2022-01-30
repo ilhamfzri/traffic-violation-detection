@@ -28,6 +28,7 @@
 
 import cv2
 import numpy as np
+import os
 from tvdr.utils.params import Parameter
 from tvdr.core.algorithm import pol2cart, calculate_center_of_box
 
@@ -149,15 +150,31 @@ class ViolationRecorderMain:
             )
 
             # Create detection  area
-            print(f"Detection Area : {[np.array([self.parameter.detection_area])[0]]}")
-            # if self.parameter.show_detection_area:
-            #     img_new = cv2.drawContours(
-            #         img_new,
-            #         [np.array([self.parameter.detection_area])[0]],
-            #         -1,
-            #         (0, 255, 0),
-            #         2,
-            #     )
+            if self.parameter.show_detection_area:
+                img_new = cv2.drawContours(
+                    img_new,
+                    [np.array([self.parameter.detection_area])[0]],
+                    -1,
+                    (0, 255, 255),
+                    2,
+                )
+
+            # Create stopline
+            if self.parameter.show_stopline:
+                start_point = (
+                    self.parameter.stopline[0][0][0],
+                    self.parameter.stopline[0][0][1],
+                )
+
+                end_point = (
+                    self.parameter.stopline[1][0][0],
+                    self.parameter.stopline[1][0][1],
+                )
+
+                img_new = cv2.line(
+                    img_new, start_point, end_point, (0, 0, 255), 2, cv2.LINE_AA
+                )
+
         return img_new
 
     def detection_combiner(
@@ -217,3 +234,27 @@ class ViolationRecorderMain:
 
     def update_params(self, parameter: Parameter):
         self.parameter = parameter
+
+    def video_recorder_init(self, video_path, output_dir):
+        vid = cv2.VideoCapture(video_path)
+        _, frame = vid.read()
+        fps = vid.get(cv2.CAP_PROP_FPS)
+        height, width, _ = frame.shape
+
+        basename = os.path.basename(video_path)
+        basename = os.path.splitext(basename)[0]
+
+        # print(fps)
+        self.video_size = (height, width)
+        out_video_path = os.path.join(output_dir, f"result.avi")
+        self.video_writer = cv2.VideoWriter(
+            out_video_path,
+            cv2.VideoWriter_fourcc("M", "J", "P", "G"),
+            fps=fps,
+            frameSize=(width, height),
+        )
+
+    def video_recorder_update(self, frame):
+        self.video_writer.write(frame)
+        # print(self.video_size)
+        # print(frame.shape)
