@@ -27,7 +27,8 @@
 # Ilham Fazri - ilhamfazri3rd@gmail.com
 
 from PySide2 import QtWidgets
-from tvdr.interface.layout import MainLayout, DatabaseLayout
+from tvdr.interface.layout import MainLayout
+from tvdr.interface.database import DatabaseLayout
 
 
 class MenuBar(QtWidgets.QHBoxLayout):

@@ -1,12 +1,15 @@
 import json
-import time
 import numpy as np
 import cv2
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from PySide2 import QtWidgets, QtCore, QtGui
 from PySide2.QtCore import Slot
+from dataset.kitti_dataset_distribution import show_values
 from tvdr.interface.video_viewer import VideoViewer
+from subprocess import Popen
 
 
 class DatabaseLayout(QtWidgets.QWidget):
@@ -107,8 +110,12 @@ class DatabaseLayout(QtWidgets.QWidget):
         self.button_inference_result = QtWidgets.QPushButton("Inference Video Result")
         self.button_inference_result.clicked.connect(self.set_video_viewer)
 
-        self.button_vehicle = QtWidgets.QPushButton("Vehicle Plot")
-        self.button_violation = QtWidgets.QPushButton("Violation Type Plot")
+        self.button_vehicle = QtWidgets.QPushButton("Vehicle Violation Distribution")
+        self.button_vehicle.clicked.connect(self.plot_vehicle_distribution)
+
+        self.button_violation = QtWidgets.QPushButton("Violation Type Distribution")
+        self.button_violation.clicked.connect(self.plot_violation_distribution)
+
         v_layout = QtWidgets.QVBoxLayout()
 
         h_layout = QtWidgets.QHBoxLayout()
@@ -225,6 +232,10 @@ class DatabaseLayout(QtWidgets.QWidget):
             self.database_reader(self.db_path_file)
 
     def database_reader(self, file_path):
+        # Generate Image Analysis
+        cmd = f"python tvdr/utils/data_statistics_generator.py --json_path '{os.path.abspath(file_path)}'"
+        os.system(cmd)
+
         with open(file_path, "r", encoding="utf-8") as db_file:
             db_json_data = json.load(db_file)
         self.db_data = {}
@@ -252,3 +263,42 @@ class DatabaseLayout(QtWidgets.QWidget):
                 }
         self.sorting_db()
         self.database_viewer_update()
+
+    def plot_vehicle_distribution(self):
+        dir_path = os.path.dirname(self.db_path_file)
+        dialog = QtWidgets.QDialog()
+        image = QtWidgets.QLabel()
+
+        img_path = os.path.join(dir_path, "vehicle_distribution_plot.png")
+        pixmap = QtGui.QPixmap(img_path)
+        x = pixmap.scaled(
+            700, 1200, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
+        )
+
+        image.setPixmap(x)
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(image)
+        dialog.setLayout(layout)
+
+        dialog.exec_()
+
+    def plot_violation_distribution(self):
+        print("here")
+        dir_path = os.path.dirname(self.db_path_file)
+        dialog = QtWidgets.QDialog()
+        image = QtWidgets.QLabel()
+
+        img_path = os.path.join(dir_path, "violation_distribution_plot.png")
+        pixmap = QtGui.QPixmap(img_path)
+        x = pixmap.scaled(
+            700, 1200, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
+        )
+
+        image.setPixmap(x)
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(image)
+        dialog.setLayout(layout)
+
+        dialog.exec_()

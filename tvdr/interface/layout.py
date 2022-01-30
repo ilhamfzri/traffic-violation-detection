@@ -41,6 +41,9 @@ from tvdr.interface.traffic_light import TrafficLight
 from tvdr.interface.detection_area import DetectionArea
 from tvdr.interface.stop_line import StopLine
 from tvdr.interface.wrong_way import WrongWayConfig
+from tvdr.interface.helmet_violation_interface import HelmetViolationInterface
+
+from tvdr.core.pipelines import TrafficViolationDetectionPipelines
 
 
 class MainLayout(QtWidgets.QWidget):
@@ -49,8 +52,11 @@ class MainLayout(QtWidgets.QWidget):
 
         self.parameter = Parameter()
 
+        # Initialize Traffic Violation Detection Pipelines
+        self.tvdp = TrafficViolationDetectionPipelines(self.parameter)
+
         # Initialize YOLO
-        self.yolo = YOLOInference(self.parameter)
+        # self.yolo = YOLOInference(self.parameter)
 
         # Initialize Traffic Light State Detection
         self.tld = TrafficLightDetection(self.parameter)
@@ -138,7 +144,7 @@ class MainLayout(QtWidgets.QWidget):
         convert_to_Qt_format = QtGui.QImage(
             rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888
         )
-        p = convert_to_Qt_format.scaled(4000, 500, Qt.KeepAspectRatio)
+        p = convert_to_Qt_format.scaled(10000, 500, Qt.KeepAspectRatio)
         return p
 
     def set_image_layout(self):
@@ -238,24 +244,17 @@ class MainLayout(QtWidgets.QWidget):
         self.yolomodel_vlayout = QtWidgets.QVBoxLayout()
 
         self.yolomodel_layout = QtWidgets.QHBoxLayout()
-        self.combobox_yolo = QtWidgets.QComboBox()
-
-        for model in self.parameter.yolo_model_dict.keys():
-            self.combobox_yolo.addItem(model)
-
-        self.current_yolo_model_label = QtWidgets.QLabel("  Current Model : Not Loaded")
+        self.vehicle_detection_lineedit = QtWidgets.QLineEdit()
 
         self.button_model_yolo_load = QtWidgets.QPushButton("Load Model")
         self.button_model_yolo_load.clicked.connect(self.load_model)
 
-        self.yolomodel_layout.addWidget(self.combobox_yolo, 2)
+        self.yolomodel_layout.addWidget(self.vehicle_detection_lineedit, 2)
         self.yolomodel_layout.addWidget(self.button_model_yolo_load, 1)
 
-        self.groupbox_yolomodel = QtWidgets.QGroupBox("YOLO Model")
+        self.groupbox_yolomodel = QtWidgets.QGroupBox("Vehicle Detection Model")
 
         self.yolomodel_vlayout.addLayout(self.yolomodel_layout)
-        self.yolomodel_vlayout.addWidget(self.current_yolo_model_label)
-
         self.groupbox_yolomodel.setLayout(self.yolomodel_vlayout)
 
         return self.groupbox_yolomodel
@@ -265,13 +264,13 @@ class MainLayout(QtWidgets.QWidget):
         self.main_configuration_layout.setAlignment(QtCore.Qt.AlignTop)
         self.main_configuration_layout.setStretch(1, 1)
 
+        self.main_configuration_layout.addLayout(self.inference_size_configuration())
         self.main_configuration_layout.addLayout(self.object_tracker_configuration())
         self.main_configuration_layout.addLayout(self.object_threshold_configuration())
         self.main_configuration_layout.addLayout(self.iou_threshold_configuration())
         self.main_configuration_layout.addLayout(self.max_detection_configuration())
 
         # Set Init YOLO Configuration Value
-
         self.main_configuration_groupbox = QtWidgets.QGroupBox(
             "Parameter Configuration"
         )
@@ -290,6 +289,11 @@ class MainLayout(QtWidgets.QWidget):
         self.set_stop_line_button = QtWidgets.QPushButton("Set Stop Line")
         self.set_stop_line_button.clicked.connect(self.set_stop_line)
 
+        self.set_helmet_violation_button = QtWidgets.QPushButton(
+            "Helmet Violation Config"
+        )
+        self.set_helmet_violation_button.clicked.connect(self.set_helmet_violation)
+
         self.set_button_update_parameters = QtWidgets.QPushButton("Apply Parameters")
         self.set_button_update_parameters.clicked.connect(self.apply_parameters)
 
@@ -298,12 +302,21 @@ class MainLayout(QtWidgets.QWidget):
         self.main_configuration_layout.addWidget(self.set_traffic_light_area)
         self.main_configuration_layout.addWidget(self.set_detection_area_button)
         self.main_configuration_layout.addWidget(self.set_stop_line_button)
+        self.main_configuration_layout.addWidget(self.set_helmet_violation_button)
         self.main_configuration_layout.addWidget(self.set_button_update_parameters)
 
         self.main_configuration_groupbox.setAlignment(QtCore.Qt.AlignTop)
         self.main_configuration_groupbox.setLayout(self.main_configuration_layout)
 
         return self.main_configuration_groupbox
+
+    def set_helmet_violation(self):
+        self.helmet_violation_interface = HelmetViolationInterface(self.parameter)
+        response = self.helmet_violation_interface.exec_()
+        print(response)
+        if response == 1:
+            self.parameter = self.helmet_violation_interface.parameter
+        del self.helmet_violation_interface
 
     def set_wrongway_config(self):
         if self.parameter.video_path == "":
@@ -326,6 +339,8 @@ class MainLayout(QtWidgets.QWidget):
                 self.update_parameter()
 
     def set_stop_line(self):
+        # Get current windows size
+
         self.stop_line = StopLine(self.parameter.video_path, self.parameter.stopline)
         self.stop_line.exec_()
         if self.stop_line.result() == 1:
@@ -350,6 +365,9 @@ class MainLayout(QtWidgets.QWidget):
                 self.update_parameter()
 
     def set_init_value_main_configuration(self):
+
+        self.vehicle_detection_lineedit.setText(self.parameter.yolo_model_path)
+        self.inference_size_spin_box.setValue(self.parameter.yolo_imgsz)
         self.object_threshold_spinbox.setValue(self.parameter.yolo_conf)
         self.iou_threshold_spinbox.setValue(self.parameter.yolo_iou)
         self.max_detection_spinbox.setValue(self.parameter.yolo_max_detection)
@@ -384,9 +402,20 @@ class MainLayout(QtWidgets.QWidget):
 
         return h_tracker_layout
 
+    def inference_size_configuration(self):
+        self.inference_size_layout = QtWidgets.QHBoxLayout()
+        self.inference_size_spin_box = QtWidgets.QDoubleSpinBox()
+        self.inference_size_spin_box.setMinimum(200)
+        self.inference_size_spin_box.setMaximum(1000)
+        self.inference_size_spin_box.setSingleStep(100)
+
+        self.inference_size_layout.addWidget(QtWidgets.QLabel("Inference Size"))
+        self.inference_size_layout.addWidget(self.inference_size_spin_box)
+
+        return self.inference_size_layout
+
     def object_threshold_configuration(self):
         self.object_threshold_layout = QtWidgets.QHBoxLayout()
-
         self.object_threshold_spinbox = QtWidgets.QDoubleSpinBox()
         self.object_threshold_spinbox.setMaximum(1)
         self.object_threshold_spinbox.setMinimum(0)
@@ -467,7 +496,7 @@ class MainLayout(QtWidgets.QWidget):
         checkbox_layout.addWidget(QtWidgets.QLabel("Truck"), 3, 0)
         checkbox_layout.addWidget(self.checkbox_truck, 3, 1)
         checkbox_layout.addWidget(self.checkbox_save, 4, 0, 1, 2)
-        Qt.ApplicationModal
+
         msg.setWindowModality(Qt.ApplicationModal)
         msg.setLayout(checkbox_layout)
         msg.exec_()
@@ -511,24 +540,20 @@ class MainLayout(QtWidgets.QWidget):
             self.lineedit_video_path.setText(fileName)
             self.parameter.video_path = fileName
 
-    @Slot()
     def load_model(self):
-        print("LOG : Loaded Model Clicked")
-        print("Model Type : {}".format(self.combobox_yolo.currentText()))
-
-        self.current_yolo_model_label.setText("  Current Model : Loading model...")
-
-        state_model = self.yolo.load_model(
-            self.parameter.yolo_model_dict[self.combobox_yolo.currentText()]
+        # Open window for select helmet violation model
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Vehicle Detection Model",
+            "",
+            "Model (*.pt)",
+            options=options,
         )
-        if state_model:
-            self.current_yolo_model_label.setText(
-                "  Current Model : {}".format(self.combobox_yolo.currentText())
-            )
-        else:
-            self.current_yolo_model_label.setText(
-                "  Current Model : Failed to load model!"
-            )
+        if fileName:
+            self.vehicle_detection_lineedit.setText(fileName)
+            self.parameter.yolo_model_path = fileName
 
     @Slot()
     def apply_parameters(self):
@@ -541,10 +566,11 @@ class MainLayout(QtWidgets.QWidget):
         self.parameter.show_detection_area = self.showDetectionAreaCheckBox.isChecked()
         self.parameter.show_stopline = self.showStopLineCheckBox.isChecked()
         self.parameter.use_tracking = self.tracker_combobox.currentText()
+        self.parameter.yolo_imgsz = int(self.inference_size_spin_box.value())
 
-        print(self.parameter.show_stopline)
+        self.tvdp.update_parameter(self.parameter)
 
-        self.yolo.update_params(self.parameter, update_model_params=True)
+        # self.yolo.update_params(self.parameter, update_model_params=True)
 
     @Slot()
     def start_inference(self):
@@ -570,7 +596,6 @@ class MainLayout(QtWidgets.QWidget):
 
     @Slot()
     def stop_inference(self):
-        print("stop inference")
         self.timer.stop()
 
     def update_frame(self):
@@ -580,36 +605,48 @@ class MainLayout(QtWidgets.QWidget):
         # get frame from cv2 read
         ret, frame = self.vid.read()
 
-        # get parameter traffic light frame position
-        index_crop = self.parameter.traffic_light_area
+        # # get parameter traffic light frame position
+        # index_crop = self.parameter.traffic_light_area
 
-        # croping frame to get traffic light frame
-        self.traffic_light_frame = frame[
-            index_crop[1] : index_crop[3], index_crop[0] : index_crop[2]
-        ]
-        self.traffic_light_frame = np.ascontiguousarray(self.traffic_light_frame)
+        # # croping frame to get traffic light frame
+        # self.traffic_light_frame = frame[
+        #     index_crop[1] : index_crop[3], index_crop[0] : index_crop[2]
+        # ]
+        # self.traffic_light_frame = np.ascontiguousarray(self.traffic_light_frame)
 
-        # processing to get color of traffic light
-        status = self.tld.detect_state(self.traffic_light_frame)
+        # # processing to get color of traffic light
+        # status = self.tld.detect_state(self.traffic_light_frame)
 
         # get current duration
         timestamp = int(
             self.vid.get(cv2.CAP_PROP_POS_FRAMES) / self.vid.get(cv2.CAP_PROP_FPS)
         )
-        print("FRAME" + str(timestamp))
+        # print("FRAME" + str(timestamp))
 
-        # inference yolov5 and count processing time
-        new_frame = self.yolo.inference_frame(frame, timestamp)
+        # # inference yolov5 and count processing time
+        # new_frame = self.yolo.inference_frame(frame, timestamp, status)
+
+        # # update inference information
+
+        # progress_value = (
+        #     self.vid.get(cv2.CAP_PROP_POS_FRAMES) / self.parameter.frame_count
+        # ) * 100
+        # self.traffic_light_state_label.setText(f"Traffic Light State \t: {status}")
+        # self.inference_fps_label.setText(f"Inference FPS \t\t: {fps:.2f}")
+        # self.inference_progress_slider.setValue(int(progress_value))
+
+        new_frame = self.tvdp.update(frame)
         end_time = time.time()
-
-        # update inference information
         fps = 1 / (end_time - start_time)
         progress_value = (
             self.vid.get(cv2.CAP_PROP_POS_FRAMES) / self.parameter.frame_count
         ) * 100
-        self.traffic_light_state_label.setText(f"Traffic Light State \t: {status}")
-        self.inference_fps_label.setText(f"Inference FPS \t\t: {fps:.2f}")
+
         self.inference_progress_slider.setValue(int(progress_value))
+        self.inference_fps_label.setText(f"Inference FPS \t\t: {fps:.2f}")
+        self.traffic_light_state_label.setText(
+            f"Traffic Light State \t: {self.tvdp.get_traffic_light_state()}"
+        )
 
         # convert and shows new frame inference in pyqt5 label
         img = self.convert_cv_qt(new_frame)
@@ -617,7 +654,8 @@ class MainLayout(QtWidgets.QWidget):
 
     def update_parameter(self):
         self.tld.update_parameters(self.parameter)
-        self.yolo.update_params(self.parameter, update_model_params=True)
+        self.tvdp.update_parameter(self.parameter)
+        # self.yolo.update_params(self.parameter, update_model_params=True)
 
     def create_msg_box(self, msg_text, type_msg="warning"):
         msg = QtWidgets.QMessageBox()
@@ -627,12 +665,3 @@ class MainLayout(QtWidgets.QWidget):
 
         msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
         msg.exec_()
-
-
-class DatabaseLayout(QtWidgets.QWidget):
-    def __init__(self):
-        super().__init__()
-        self.layout = QtWidgets.QFormLayout()
-        self.text = QtWidgets.QTextEdit("Test2")
-        self.layout.addWidget(self.text)
-        self.setLayout(self.layout)

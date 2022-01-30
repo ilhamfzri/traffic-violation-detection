@@ -6,7 +6,7 @@ import numpy as np
 from tvdr.utils.params import Parameter
 from tvdr.core.vehicle_detection import VehicleDetection
 from tvdr.core.violation_recorder_class import ViolationRecorderMain
-from tvdr.core.helmet_detection import HelmetViolationDetection
+from tvdr.core.helmet_violation_detection import HelmetViolationDetection
 from PySide2 import QtWidgets, QtCore, QtGui
 
 logging_root = "Helmet Violation Interface"
@@ -187,9 +187,9 @@ class HelmetViolationInterface(QtWidgets.QDialog):
         # Minimum Age
         self.minimum_age_layout = QtWidgets.QHBoxLayout()
         self.minimum_age_spinbox = QtWidgets.QDoubleSpinBox()
-        self.minimum_age_spinbox.setMaximum(1)
+        self.minimum_age_spinbox.setMaximum(100)
         self.minimum_age_spinbox.setMinimum(0)
-        self.minimum_age_spinbox.setSingleStep(0.01)
+        self.minimum_age_spinbox.setSingleStep(1)
         self.minimum_age_layout.addWidget(QtWidgets.QLabel("Minimum Age"))
         self.minimum_age_layout.addWidget(self.minimum_age_spinbox)
 
