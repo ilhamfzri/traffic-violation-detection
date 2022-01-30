@@ -37,6 +37,7 @@ class Parameter:
         self.video_path = ""
 
         # YOLO Vehicle Detection Params
+        self.yolo_model_path = ""
         self.yolo_imgsz = 1080
         self.yolo_stride = "2"
         self.yolo_conf = 0.25
@@ -82,6 +83,11 @@ class Parameter:
         self.show_detection_area = True
         self.show_stopline = True
 
+        # Downstream task Params
+        self.detect_helmet_violation = True
+        self.detect_running_redlight_violation = True
+        self.detect_wrongway_violation = True
+
         # Tracking Params
         self.use_tracking = "SORT"  # {"No Tracker", "Deep SORT", "SORT"}
 
@@ -109,3 +115,12 @@ class Parameter:
         self.wrongway_threshold_degree = 20
         self.wrongway_miss_count = 5  # In second
         self.wrongway_min_value = 50
+
+        # Helmet Violations Params
+        self.hv_model_path = ""
+        self.hv_imgsz = 128
+        self.hv_conf = 0.25
+        self.hv_iou = 0.45
+        self.hv_min_age = 3
+        self.hv_pad_width_mul = 1.5
+        self.hv_pad_height_mul = 1.5
