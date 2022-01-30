@@ -6,17 +6,12 @@ import numpy as np
 
 from tqdm import tqdm
 
-INPUT_DIR = "datasets/helmet_violation"
-OUTPUT_DIR = "outputs"
-FILESNAME = "kaggle_datasets"
-
-
 annotations_path = "datasets/helmet_violation/annotations"
 
 # Dictionary that maps class names to IDs
 class_name_to_id_mapping = {
-    "Without Helmet": 0,
-    "With Helmet": 1,
+    "With Helmet": 0,
+    "Without Helmet": 1,
 }
 
 

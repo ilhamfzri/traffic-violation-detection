@@ -1,0 +1,1 @@
+python train.py --img 240 --cfg helmet_violation_detection/helmet_violation_model_conf.yaml --hyp helmet_violation_detection/helmet_violation_data_conf.yaml --batch 32 --epochs 100 --data road_sign_data.yaml --workers 24 --name yolo_helmet_violation

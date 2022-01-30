@@ -1,18 +1,20 @@
 import os
 import shutil
+import sys
+
+sys.path.append("/content/TrafficViolationDetection")
 
 from sklearn.model_selection import train_test_split
-from helmet_violation_detection.kaggle_to_yolov5_format import INPUT_DIR, OUTPUT_DIR
 from tvdr.utils.path import create_folder
 
-INPUT_DIR = "dataset/helmet_detection"
-OUPUT_DIR = "dataset/split"
+INPUT_DIR = "/content/drive/MyDrive/Skripsi/Helmet Detector/Datasets/Kaggle"
+OUTPUT_DIR = "/content/drive/MyDrive/Skripsi/Helmet Detector/Datasets/Kaggle/splited"
 
 
 def move_files_to_folder(list_of_files, destination_folder):
     for f in list_of_files:
         try:
-            shutil.move(f, destination_folder)
+            shutil.copy(f, destination_folder)
         except:
             print(f)
             assert False
@@ -49,12 +51,14 @@ def main():
     create_folder(os.path.join(OUTPUT_DIR, "annotations/val"))
     create_folder(os.path.join(OUTPUT_DIR, "annotations/test"))
 
-    move_files_to_folder(train_images, "images/train")
-    move_files_to_folder(val_images, "images/val/")
-    move_files_to_folder(test_images, "images/test/")
-    move_files_to_folder(train_annotations, "annotations/train/")
-    move_files_to_folder(val_annotations, "annotations/val/")
-    move_files_to_folder(test_annotations, "annotations/test/")
+    move_files_to_folder(train_images, os.path.join(OUTPUT_DIR, "images/train"))
+    move_files_to_folder(val_images, os.path.join(OUTPUT_DIR, "images/val"))
+    move_files_to_folder(test_images, os.path.join(OUTPUT_DIR, "images/test"))
+    move_files_to_folder(
+        train_annotations, os.path.join(OUTPUT_DIR, "annotations/train")
+    )
+    move_files_to_folder(val_annotations, os.path.join(OUTPUT_DIR, "annotations/val"))
+    move_files_to_folder(test_annotations, os.path.join(OUTPUT_DIR, "annotations/test"))
 
 
 if __name__ == "__main__":

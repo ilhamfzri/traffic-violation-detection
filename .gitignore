@@ -1,0 +1,6 @@
+tvdr/core/__pycache__
+tvdr/interface/__pycache__
+tvdr/utils/__pycache__
+.DS_Store
+.DS_Store?
+samples
