@@ -1,6 +1,7 @@
 import argparse
 import cv2
 import sys
+import time
 
 sys.path.append("yolov5_repo")
 
@@ -39,17 +40,19 @@ def main():
     cfg = ConfigLoader()
     parameter = Parameter()
     parameter = cfg.load_parser(args.config_file)
-    parameter.select_device = args.device
+    parameter.device = args.device
 
     # Load video path
     if args.video_path is not None:
         video_path = args.video_path
     else:
-        if parameter.video_path is not None:
+        if parameter.device is not None:
             video_path = parameter.video_path
         else:
             print("ERROR : Please set video path correctly!")
             return 0
+
+    parameter.video_path = args.video_path
 
     # Set Init Pipelines
     pipeline = TrafficViolationDetectionPipelines(parameter)
@@ -64,7 +67,7 @@ def main():
     frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
 
     for i in tqdm(range(0, 100)):
-        vid.set(1, i)
+        # vid.set(1, i)
         _, frame = vid.read()
         result_frame = pipeline.update(frame)
         pipeline.vr.video_recorder_update(result_frame)
