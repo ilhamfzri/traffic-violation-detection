@@ -149,8 +149,6 @@ class ViolationRecorder:
 
     def annotator_violation_wrongway(self, xyxy, img, data):
         img_new = img.copy()
-
-        print(img_new)
         img_new = cv2.rectangle(
             img=img_new,
             pt1=(int(xyxy[0]), int(xyxy[1])),
@@ -189,7 +187,6 @@ class ViolationRecorder:
             color=(0, 0, 255),
             thickness=2,
         )
-        print(img_new)
 
         return img_new
 

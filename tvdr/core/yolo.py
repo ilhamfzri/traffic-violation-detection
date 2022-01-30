@@ -37,7 +37,7 @@ from numpy.lib.function_base import append
 from tvdr.core import sort
 from tvdr.core import wrong_way
 from tvdr.core.violation_recorder import ViolationRecorder
-from tvdr.core.wrong_way import WrongWayDetection
+from tvdr.core.wrong_way import WrongWayViolationDetection
 from tvdr.utils.params import Parameter
 from tvdr.core.deepsort import DeepSort
 from tvdr.core.sort import Sort
@@ -84,7 +84,7 @@ class YOLOInference:
         )
 
         # WrongWay Detection  Initialize
-        self.wrongway = WrongWayDetection(self.parameter)
+        self.wrongway = WrongWayViolationDetection(self.parameter)
 
         # SORT Initialize
         self.sort = Sort(
@@ -109,9 +109,11 @@ class YOLOInference:
         except:
             return False
 
-    def inference_frame(self, frame_data: np.ndarray, timestamp_video: int):
-        # x = timestamp_video
-        # print(f"timestamp {x}")
+    def inference_frame(
+        self, frame_data: np.ndarray, timestamp_video: int, status: str
+    ):
+
+        # print(status)
 
         # Update Model Params
         if self.update_model_params == True:
@@ -141,7 +143,7 @@ class YOLOInference:
 
         # Running Red Light Detection
         violation_result, non_violation_result = detection_running_redlight(
-            result, self.parameter.stopline
+            result, self.parameter.stopline, status
         )
 
         # Running Wrong Way Detection
@@ -153,8 +155,14 @@ class YOLOInference:
             violation_result, frame_data, timestamp_video
         )
 
-        #Save Wrong Way Detection
-        self.
+        # # Save Wrong Way Detection
+        self.violation_recorder.write_violation_wrongway(
+            result,
+            frame_data,
+            timestamp_video,
+            self.wrongway.data_dict,
+            self.wrongway_violation_data,
+        )
 
         # Annotator Running Red Light
         frame_data = self.annotator(frame_data, non_violation_result)

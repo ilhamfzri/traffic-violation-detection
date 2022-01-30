@@ -37,11 +37,11 @@ from tvdr.utils.params import Parameter
 from tvdr.core import Sort
 from tvdr.utils.general import combine_yolo_sort_result
 
-from yolov5.models.common import DetectMultiBackend
-from yolov5.utils.torch_utils import select_device
-from yolov5.utils.general import check_img_size, non_max_suppression, scale_coords
-from yolov5.utils.augmentations import letterbox
-from yolov5.utils.datasets import LoadImages
+from yolov5_repo.models.common import DetectMultiBackend
+from yolov5_repo.utils.torch_utils import select_device
+from yolov5_repo.utils.general import check_img_size, non_max_suppression, scale_coords
+from yolov5_repo.utils.augmentations import letterbox
+from yolov5_repo.utils.datasets import LoadImages
 
 logging_root = "Vehicle Detection"
 
