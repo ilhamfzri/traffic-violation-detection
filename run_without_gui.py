@@ -2,7 +2,7 @@ import argparse
 import cv2
 import sys
 
-sys.path.append("yolov5")
+sys.path.append("yolov5_repo")
 
 from tqdm import tqdm
 from tvdr.utils.params import Parameter
