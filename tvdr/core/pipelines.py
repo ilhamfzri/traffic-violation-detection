@@ -62,7 +62,7 @@ class TrafficViolationDetectionPipelines:
 
         # Initialize violation recorder
         self.vr = ViolationRecorderMain(self.parameter)
-        self.update_parameter(parameter)
+        # self.update_parameter(parameter)
 
     def update(self, image):
 
