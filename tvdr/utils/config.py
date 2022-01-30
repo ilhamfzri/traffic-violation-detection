@@ -7,15 +7,15 @@ from tvdr.utils.params import Parameter
 class ConfigLoader(Parameter):
     def __init__(self):
         super().__init__()
-
         pass
 
     def load_parser(self, json_path: str):
         with open(json_path, "r") as json_file:
             json_data = json.load(json_file)
 
-            # Read YOLO Params
+            # Read YOLO (Vehicle Detection) Params
             yolo_params = json_data["yolo_vehicle_detection"]
+            self.yolo_model_path = yolo_params["model_path"]
             self.yolo_imgsz = yolo_params["imgsz"]
             self.yolo_conf = yolo_params["conf_threshold"]
             self.yolo_iou = yolo_params["iou_threshold"]
@@ -49,12 +49,22 @@ class ConfigLoader(Parameter):
             self.deepsort_nn_budget = deepsort_params["nn_budget"]
             self.deepsort_use_cuda = deepsort_params["use_cuda"]
 
-            # Wrong Way Params
+            # Read Wrong Way Params
             wrongway_params = json_data["wrong_way"]
             self.wrongway_direction_degree = wrongway_params["direction_degree"]
             self.wrongway_threshold_degree = wrongway_params["threshold_degree"]
             self.wrongway_miss_count = wrongway_params["miss_count"]
             self.wrongway_min_value = wrongway_params["min_value_threshold"]
+
+            # Read Helmet Violation Detection Params
+            hvd_params = json_data["helmet_violation_detection"]
+            self.hv_model_path = hvd_params["model_path"]
+            self.hv_imgsz = hvd_params["imgsz"]
+            self.hv_conf = hvd_params["conf_threshold"]
+            self.hv_iou = hvd_params["iou_threshold"]
+            self.hv_min_age = hvd_params["min_age"]
+            self.hv_pad_height_mul = hvd_params["padding_height_multiplier"]
+            self.hv_pad_width_mul = hvd_params["padding_width_multiplier"]
 
             # Read General Params
             general_params = json_data["general"]
@@ -62,6 +72,12 @@ class ConfigLoader(Parameter):
             self.video_path = general_params["video_path"]
             self.detection_area = general_params["detection_area"]
             self.stopline = general_params["stopline"]
+
+            self.detect_helmet_violation = general_params["detect_helmet_violation"]
+            self.detect_running_redlight_violation = general_params[
+                "detect_running_redlight_violation"
+            ]
+            self.detect_wrongway_violation = general_params["detect_wrongway_violation"]
 
             self.show_bounding_boxes = general_params["show_bounding_boxes"]
             self.show_label_and_confedence = general_params["show_label_and_confedence"]
@@ -77,6 +93,7 @@ class ConfigLoader(Parameter):
 
         # Set YOLO Params
         yolo_params = {}
+        yolo_params["model_path"] = self.yolo_model_path
         yolo_params["imgsz"] = self.yolo_imgsz
         yolo_params["conf_threshold"] = self.yolo_conf
         yolo_params["iou_threshold"] = self.yolo_iou
@@ -92,6 +109,12 @@ class ConfigLoader(Parameter):
         traffic_light_params["green_light"] = self.traffic_light_green_light
 
         # Set Tracking Params
+        hvd_params = {}
+        hvd_params["model_path"] = self.hv_model_path
+        hvd_params["imgsz"] = self.hv_imgsz
+        hvd_params["conf_threshold"] = self.hv_conf
+        hvd_params["iou_threshold"] = self.hv_iou
+        hvd_params["min_age"] = self.hv_min_age
 
         ## Set SORT Params
         sort_params = {}
@@ -122,12 +145,28 @@ class ConfigLoader(Parameter):
         wrongway_params["miss_count"] = self.wrongway_miss_count
         wrongway_params["min_value_threshold"] = self.wrongway_min_value
 
+        # Helmet Violation Detection  Params
+        hvd_params = {}
+        hvd_params["model_path"] = self.hv_model_path
+        hvd_params["imgsz"] = self.hv_imgsz
+        hvd_params["conf_threshold"] = self.hv_conf
+        hvd_params["iou_threshold"] = self.hv_iou
+        hvd_params["min_age"] = self.hv_min_age
+        hvd_params["padding_height_multiplier"] = self.hv_pad_height_mul
+        hvd_params["padding_width_multiplier"] = self.hv_pad_width_mul
+
         # General Params
         general_params = {}
         general_params["device"] = self.device
         general_params["video_path"] = self.video_path
         general_params["detection_area"] = self.detection_area
         general_params["stopline"] = self.stopline
+
+        general_params["detect_helmet_violation"] = self.detect_helmet_violation
+        general_params[
+            "detect_running_redlight_violation"
+        ] = self.detect_running_redlight_violation
+        general_params["detect_wrongway_violation"] = self.detect_wrongway_violation
 
         general_params["show_bounding_boxes"] = self.show_bounding_boxes
         general_params["show_label_and_confedence"] = self.show_label_and_confedence
@@ -138,6 +177,7 @@ class ConfigLoader(Parameter):
         json_data["yolo_vehicle_detection"] = yolo_params
         json_data["wrong_way"] = wrongway_params
         json_data["traffic_light"] = traffic_light_params
+        json_data["helmet_violation_detection"] = hvd_params
         json_data["tracking"] = tracking_params
 
         with open(json_path, "w") as json_file:
