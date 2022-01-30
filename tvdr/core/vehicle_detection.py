@@ -144,7 +144,7 @@ class VehicleDetection:
 
         # Set model and inference parameters
         self.parameter = parameter
-        self.model_path = "models/vehicle_detection/best.pt"
+        self.model_path = self.parameter.yolo_model_path
         self.device = self.parameter.device
         self.inference_size = (self.parameter.yolo_imgsz, self.parameter.yolo_imgsz)
         self.conf_thres = self.parameter.yolo_conf
@@ -164,13 +164,14 @@ class VehicleDetection:
 
     def post_processing(self, result):
         # Filtering only objects inside the detection area will be evaluated.
+        # This algorithm taken from here : https://stackoverflow.com/questions/217578/how-can-i-determine-whether-a-2d-point-is-within-a-polygon
 
         result_post = np.empty((0, result.shape[1]))
         for object in result:
 
             # calculate centroid for object
-            x_center = object[0] + (object[2] - object[0]) / 2
-            y_center = object[1] + (object[3] - object[1]) / 2
+            x_center = object[0] + abs(object[2] - object[0]) / 2
+            y_center = object[1] + abs(object[3] - object[1]) / 2
 
             # check if centroid inside polygon points of the detection area
             np_detection_area = np.array(self.parameter.detection_area)
@@ -189,23 +190,28 @@ class VehicleDetection:
             ):
                 continue
 
+            inside = False
+
             j = np_detection_area.shape[0] - 1
+
             for i in range(0, np_detection_area.shape[0]):
                 xi_da, yi_da = np_detection_area[i][0]
                 xj_da, yj_da = np_detection_area[j][0]
 
                 state_1 = (yi_da > y_center) != (yj_da > y_center)
                 state_2 = x_center < (
-                    ((xj_da - xi_da) * (y_center - yi_da)) / (yj_da - yi_da) + x_center
+                    (xj_da - xi_da) * (y_center - yi_da) / (yj_da - yi_da) + xi_da
                 )
 
                 if state_1 and state_2:
-                    result_post = np.append(
-                        result_post, object.reshape(1, result.shape[1]), axis=0
-                    )
-                    break
+                    inside = not inside
 
                 j = i
+
+            if inside:
+                result_post = np.append(
+                    result_post, object.reshape(1, result.shape[1]), axis=0
+                )
 
         return result_post
 
