@@ -1,0 +1,1 @@
+python yolov5/train.py --resume "/content/drive/MyDrive/Skripsi/Model Vehicle Detection/exp2/weights/last.pt"
