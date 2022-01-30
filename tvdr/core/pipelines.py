@@ -65,7 +65,6 @@ class TrafficViolationDetectionPipelines:
         # self.update_parameter(parameter)
 
     def update(self, image):
-        time1 = time.time()
         # Check if model vehicle detection is not loaded then load
         if self.vd.model_loaded == False:
             self.vd.load_model()
@@ -131,8 +130,6 @@ class TrafficViolationDetectionPipelines:
         if len(result_rrvd) > 0:
             print(f"Running Red Light Violation : {result_rrvd}")
 
-        annotate_time0 = time.time()
-
         result_final = self.vr.detection_combiner(
             vehicle_detection_result=result_vd,
             direction_data=direction_data,
@@ -140,13 +137,9 @@ class TrafficViolationDetectionPipelines:
             wrongway_violation_result=result_wvd,
             running_redlight_result=result_rrvd,
         )
-
+        print(result_vd.shape)
+        print(result_final.shape)
         image_out = self.vr.annotate_result(image, result_final)
-        annotate_timef = time.time()
-
-        print((annotate_timef - annotate_time0) * 1000)
-        timef = time.time()
-        print(f"SS : {(timef-time1)*1000}")
         return image_out
 
     def update_parameter(self, parameter: Parameter):

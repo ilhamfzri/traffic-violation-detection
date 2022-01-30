@@ -149,31 +149,31 @@ class ViolationRecorderMain:
                 tipLength=0.5,
             )
 
-            # Create detection  area
-            if self.parameter.show_detection_area:
-                img_new = cv2.drawContours(
-                    img_new,
-                    [np.array([self.parameter.detection_area])[0]],
-                    -1,
-                    (0, 255, 255),
-                    2,
-                )
+        # Create detection  area
+        if self.parameter.show_detection_area:
+            img_new = cv2.drawContours(
+                img_new,
+                [np.array([self.parameter.detection_area])[0]],
+                -1,
+                (0, 255, 255),
+                2,
+            )
 
-            # Create stopline
-            if self.parameter.show_stopline:
-                start_point = (
-                    self.parameter.stopline[0][0][0],
-                    self.parameter.stopline[0][0][1],
-                )
+        # Create stopline
+        if self.parameter.show_stopline:
+            start_point = (
+                self.parameter.stopline[0][0][0],
+                self.parameter.stopline[0][0][1],
+            )
 
-                end_point = (
-                    self.parameter.stopline[1][0][0],
-                    self.parameter.stopline[1][0][1],
-                )
+            end_point = (
+                self.parameter.stopline[1][0][0],
+                self.parameter.stopline[1][0][1],
+            )
 
-                img_new = cv2.line(
-                    img_new, start_point, end_point, (0, 0, 255), 2, cv2.LINE_AA
-                )
+            img_new = cv2.line(
+                img_new, start_point, end_point, (0, 0, 255), 2, cv2.LINE_AA
+            )
 
         return img_new
 
@@ -246,10 +246,11 @@ class ViolationRecorderMain:
 
         # print(fps)
         self.video_size = (height, width)
-        out_video_path = os.path.join(output_dir, f"result.avi")
+        out_video_path = os.path.join(output_dir, f"result.mp4")
+        fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
         self.video_writer = cv2.VideoWriter(
             out_video_path,
-            -1,
+            fourcc=fourcc,
             fps=fps,
             frameSize=(width, height),
         )
