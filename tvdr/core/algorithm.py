@@ -1,3 +1,31 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+# The MIT License (MIT)
+
+# Copyright (c) 2020 UGM
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# AUTHORS
+# Ilham Fazri - ilhamfazri3rd@gmail.com
+
 from re import X
 import numpy as np
 from numpy.lib.polynomial import poly
@@ -57,14 +85,17 @@ def calculate_center_of_box(point_xyxy):
     return (x_center, y_center)
 
 
-def detection_running_redlight(detection_result, line):
+def detection_running_redlight(detection_result, line, status):
     non_violation_result = np.empty((0, detection_result.shape[1]))
     violation_result = np.empty((0, detection_result.shape[1]))
     for data in detection_result:
         bbox = data[0:4]
         polygon = convert_bbox_to_polygon(bbox)
-        if is_line_intersection_polygon(line, polygon):
-            violation_result = np.vstack((violation_result, data))
+        if status == "Red":
+            if is_line_intersection_polygon(line, polygon):
+                violation_result = np.vstack((violation_result, data))
+            else:
+                non_violation_result = np.vstack((non_violation_result, data))
         else:
             non_violation_result = np.vstack((non_violation_result, data))
 
