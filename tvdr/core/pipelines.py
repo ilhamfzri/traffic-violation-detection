@@ -64,7 +64,7 @@ class TrafficViolationDetectionPipelines:
         self.vr = ViolationRecorderMain(self.parameter)
         # self.update_parameter(parameter)
 
-    def update(self, image):
+    def update(self, image, frame_idx):
         # Check if model vehicle detection is not loaded then load
         if self.vd.model_loaded == False:
             self.vd.load_model()
@@ -137,9 +137,20 @@ class TrafficViolationDetectionPipelines:
             wrongway_violation_result=result_wvd,
             running_redlight_result=result_rrvd,
         )
-        print(result_vd.shape)
-        print(result_final.shape)
         image_out = self.vr.annotate_result(image, result_final)
+
+        if self.parameter.detect_running_redlight_violation:
+            if len(result_rrvd) > 0:
+                self.vr.write_violation_running_red_light(
+                    result_final, image, frame_idx
+                )
+
+        if self.parameter.detect_wrongway_violation:
+            if len(result_wvd) > 0:
+                self.vr.write_violation_wrongway(result_final, image, frame_idx)
+
+        self.vr.video_recorder_update(image_out)
+
         return image_out
 
     def update_parameter(self, parameter: Parameter):
@@ -159,6 +170,8 @@ class TrafficViolationDetectionPipelines:
 
         if self.parameter.detect_running_redlight_violation:
             self.rrvd.update_params(parameter)
+
+        self.vr.database_writer_init("result")
 
     def get_traffic_light_state(self):
         return self.rrvd.state

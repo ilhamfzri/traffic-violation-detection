@@ -29,8 +29,13 @@
 import cv2
 import numpy as np
 import os
+import time
+import json
+
+from datetime import datetime as dt
 from tvdr.utils.params import Parameter
-from tvdr.core.algorithm import pol2cart, calculate_center_of_box
+from tvdr.core.algorithm import cart2pol, pol2cart, calculate_center_of_box
+from tvdr.utils.path import create_folder
 
 
 class ViolationRecorderMain:
@@ -255,7 +260,173 @@ class ViolationRecorderMain:
             frameSize=(width, height),
         )
 
+        self.list_object_violation_running_redlight = {}
+        self.list_object_violation_wrong_way = {}
+        self.list_object_violation_not_using_helmet = {}
+        self.json_data = {}
+
     def video_recorder_update(self, frame):
         self.video_writer.write(frame)
         # print(self.video_size)
         # print(frame.shape)
+
+    def database_writer_init(self, output_dir):
+        # Set output directory path
+        subfolder_name_date = dt.now().strftime("%m_%d_%Y_%H_%M_%S")
+        subfolder_path = os.path.join(output_dir, f"run_{subfolder_name_date}")
+        self.output_dir = subfolder_path
+
+        create_folder(output_dir)
+        create_folder(self.output_dir)
+
+        # Set path to save wrongway, running redlight, and not using helmet images
+        self.wrongway_dir = os.path.join(self.output_dir, "wrongway")
+        self.running_redlight_dir = os.path.join(self.output_dir, "running_redlight")
+        self.not_using_helmet_dir = os.path.join(self.output_dir, "not_using_helmet")
+
+        create_folder(self.wrongway_dir)
+        create_folder(self.running_redlight_dir)
+        create_folder(self.not_using_helmet_dir)
+
+        # Set path to create database based on json format
+        self.json_path = os.path.join(self.output_dir, "result.json")
+
+        self.video_recorder_init(self.parameter.video_path, self.output_dir)
+
+    def write_violation_wrongway2(
+        self, result, img0, timestamp_video, object_direction_data, violation_data
+    ):
+        for i in range(0, result.shape[0]):
+            object_id = result[i][6]
+            if (
+                object_id in violation_data
+                and object_id not in self.list_object_violation_wrong_way
+            ):
+                timestamp = int(time.time())
+                img_proof_path = os.path.join(self.wrongway_dir, f"IMG_{timestamp}.jpg")
+                img_proof = self.annotator_violation_wrongway(
+                    result[i][0:4], img0.copy(), object_direction_data[object_id]
+                )
+                cv2.imwrite(img_proof_path, img_proof)
+
+                minutes = timestamp_video // 60
+                seconds = timestamp_video % 60
+
+                violation_record = {}
+                violation_record["vehicle_type"] = self.parameter.yolo_classes_name[
+                    str(int(result[i][5]))
+                ]
+                violation_record["img_proof"] = img_proof_path
+                violation_record["timestamp"] = f"{minutes:02}:{seconds:02}"
+
+                self.list_object_violation_wrong_way[object_id] = violation_record
+
+                self.database_writer()
+
+    def write_violation_wrongway(self, result, img0, frame_index):
+        for i in range(0, result.shape[0]):
+            object_id = result[i][6]
+            violation_state = result[i][9]
+            if (
+                object_id not in self.list_object_violation_wrong_way.keys()
+                and violation_state == 1
+            ):
+                timestamp = int(time.time())
+                img_proof_path = os.path.join(self.wrongway_dir, f"IMG_{timestamp}.jpg")
+                direction = result[i][7]
+                img_proof = self.annotator_violation_wrongway(
+                    result[i], img0.copy(), direction
+                )
+                cv2.imwrite(img_proof_path, img_proof)
+
+                minutes = frame_index // 60
+                seconds = frame_index % 60
+
+                violation_record = {}
+                violation_record["vehicle_type"] = self.parameter.yolo_classes_name[
+                    str(int(result[i][5]))
+                ]
+                violation_record["img_proof"] = img_proof_path
+                violation_record["timestamp"] = f"{minutes:02}:{seconds:02}"
+
+                self.list_object_violation_wrong_way[object_id] = violation_record
+                self.database_writer()
+
+    def write_violation_running_red_light(self, result, img0, frame_index):
+        for i in range(0, result.shape[0]):
+            object_id = result[i][6]
+            violation_state = result[i][10]
+            if (
+                object_id not in self.list_object_violation_running_redlight.keys()
+                and violation_state == 1
+            ):
+
+                timestamp = int(time.time())
+                img_proof_path = os.path.join(
+                    self.running_redlight_dir, f"IMG_{timestamp}.jpg"
+                )
+                img_proof = self.annotator_violation_redlight(result[i], img0.copy())
+                cv2.imwrite(img_proof_path, img_proof)
+
+                # self.list_object_violation_running_redlight.append(object_id)
+                minutes = frame_index // 60
+                seconds = frame_index % 60
+
+                violation_record = {}
+                violation_record["vehicle_type"] = self.parameter.yolo_classes_name[
+                    str(int(result[i][5]))
+                ]
+                violation_record["img_proof"] = img_proof_path
+
+                violation_record["timestamp"] = f"{minutes:02}:{seconds:02}"
+
+                self.list_object_violation_running_redlight[
+                    object_id
+                ] = violation_record
+
+                self.database_writer()
+
+    def annotator_violation_wrongway(self, xyxy, img, direction):
+        img_new = img.copy()
+        x_center, y_center = calculate_center_of_box(xyxy[0:4])
+        pos1 = pol2cart(self.arrow_length, direction)
+        pos2 = (-pos1[0], -pos1[1])
+
+        img_new = cv2.arrowedLine(
+            img_new,
+            (int(x_center + pos2[0]), int(y_center + pos2[1])),
+            (int(x_center + pos1[0]), int(y_center + pos1[1])),
+            (0, 0, 255),
+            3,
+            cv2.LINE_AA,
+            tipLength=0.5,
+        )
+        img_new = cv2.rectangle(
+            img=img_new,
+            pt1=(int(xyxy[0]), int(xyxy[1])),
+            pt2=(int(xyxy[2]), int(xyxy[3])),
+            color=(0, 0, 255),
+            thickness=2,
+        )
+        return img_new
+
+    def annotator_violation_redlight(self, xyxy, img):
+        img_new = img.copy()
+        img_new = cv2.rectangle(
+            img=img_new,
+            pt1=(int(xyxy[0]), int(xyxy[1])),
+            pt2=(int(xyxy[2]), int(xyxy[3])),
+            color=(0, 0, 255),
+            thickness=2,
+        )
+
+        return img_new
+
+    def database_writer(self):
+        self.json_data[
+            "running_red_light"
+        ] = self.list_object_violation_running_redlight
+        self.json_data["wrong_way "] = self.list_object_violation_wrong_way
+
+        with open(self.json_path, "w", encoding="utf-8") as json_file:
+            json.dump(self.json_data, json_file, indent=3)

@@ -635,7 +635,9 @@ class MainLayout(QtWidgets.QWidget):
         # self.inference_fps_label.setText(f"Inference FPS \t\t: {fps:.2f}")
         # self.inference_progress_slider.setValue(int(progress_value))
 
-        new_frame = self.tvdp.update(frame)
+        frame_idx = self.vid.get(cv2.CAP_PROP_POS_FRAMES)
+        new_frame = self.tvdp.update(frame, frame_idx)
+
         end_time = time.time()
         fps = 1 / (end_time - start_time)
         progress_value = (
