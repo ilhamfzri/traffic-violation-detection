@@ -44,11 +44,11 @@ class Parameter:
         self.yolo_iou = 0.45
         self.yolo_classes = [2, 3, 5, 7]
         self.yolo_classes_name = {
-            2: "Car",
-            3: "Motorcycle",
-            5: "Bus",
-            7: "Truck",
-            4: "Airplane",
+            0: "Car",
+            1: "Motorcycle",
+            2: "Bus",
+            3: "Truck",
+            4: "Bicycle",
         }
         self.yolo_multi_label = False
         self.yolo_max_detection = 500
