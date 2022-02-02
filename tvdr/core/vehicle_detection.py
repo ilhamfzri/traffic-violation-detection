@@ -101,6 +101,7 @@ class VehicleDetection:
             result = result.cpu()
 
         result = result.numpy()
+        self.result_without_tracking = result
 
         # Tracking algorithm
         if self.parameter.use_tracking != "No Tracker":
@@ -111,6 +112,9 @@ class VehicleDetection:
             result = self.post_processing(result)
 
         return result
+
+    def get_without_tracking(self):
+        return self.result_without_tracking
 
     def load_model(self):
 

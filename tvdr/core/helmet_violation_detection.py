@@ -137,12 +137,20 @@ class HelmetViolationDetection:
             id = object[6]
             if (
                 self.object_history[id]["age"] > self.min_age
-                and self.object_history[id]["inference_state"] != True
+                and self.object_history[id]["age"] % self.detect_interval == 0
             ):
                 object_inference = np.append(
                     object_inference, object.reshape(1, 7), axis=0
                 )
-                self.object_history[id]["inference_state"] = True
+
+            # if (
+            #     self.object_history[id]["age"] > self.min_age
+            #     and self.object_history[id]["inference_state"] != True
+            # ):
+            #     object_inference = np.append(
+            #         object_inference, object.reshape(1, 7), axis=0
+            #     )
+            #     self.object_history[id]["inference_state"] = True
 
         # Remove object history if missing above the threshold
         list_delete_id = []
@@ -162,6 +170,7 @@ class HelmetViolationDetection:
         # print(f"Object Inference : {object_inference}")
 
         # Detect violation from list of objects that meet the criteria
+        print(f"TEST : {object_inference}")
         violation_result = self.detect_violation(img, object_inference)
 
         # print(f"Violation Result : {violation_result}")
@@ -235,6 +244,7 @@ class HelmetViolationDetection:
         self.device = parameter.device
         self.model_path = parameter.hv_model_path
         self.min_age = parameter.hv_min_age
+        self.detect_interval = 10
         self.conf_thres = parameter.hv_conf
         self.iou_thres = parameter.hv_iou
         self.inference_size = (parameter.hv_imgsz, parameter.hv_imgsz)
