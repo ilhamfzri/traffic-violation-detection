@@ -66,8 +66,7 @@ def main():
 
     frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    for i in tqdm(range(0, 100)):
-        # vid.set(1, i)
+    for i in tqdm(range(0, frame_count)):
         _, frame = vid.read()
         result_frame = pipeline.update(frame)
         pipeline.vr.video_recorder_update(result_frame)
