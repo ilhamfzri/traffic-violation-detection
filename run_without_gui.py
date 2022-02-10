@@ -68,7 +68,7 @@ def main():
 
     for i in tqdm(range(0, frame_count)):
         _, frame = vid.read()
-        result_frame = pipeline.update(frame)
+        result_frame = pipeline.update(frame, i)
         pipeline.vr.video_recorder_update(result_frame)
 
 
