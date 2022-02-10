@@ -81,16 +81,39 @@ class HelmetViolationDetection:
     def detect_violation(self, img, result):
         # Detect helmet violation
         violation_result = []
+        print("Predict Violation")
         for obj in result:
             img_crop = self.image_croping(img, obj[0:4])
+
+            # Create Croping Image
+
             img_padding = self.padding_image(img_crop)
             predict_result = self.predict(img_padding)
 
+            print(obj[6])
+            print(predict_result)
+
+            violation_state_data = False
+
             for pred in predict_result:
-                if pred[5] == 0:
+                if int(pred[5]) == 1:
                     object_id = obj[6]
+                    violation_state_data = True
                     violation_result.append(object_id)
                     break
+
+            if violation_state_data == True:
+                image_path_out = os.path.join(
+                    "dataset_helmet_collection/helmet", f"{time.time()}.jpg"
+                )
+            else:
+                image_path_out = os.path.join(
+                    "dataset_helmet_collection/non_helmet", f"{time.time()}.jpg"
+                )
+
+            cv2.imwrite(image_path_out, img_crop)
+
+        print(violation_result)
 
         return violation_result
 
