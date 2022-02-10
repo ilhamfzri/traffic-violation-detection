@@ -57,7 +57,7 @@ class ViolationRecorderMain:
         self.helmet_annotate_history = []
         pass
 
-    def annotate_result(self, img, result):
+    def annotate_result(self, img, result, remember_violation=True):
         # result[i] = [xmin, ymin, xmax, ymax, confidence, class, object_id, direction, helmet_violation, running_redlight, wrongway]
 
         img_new = img.copy()
@@ -113,7 +113,11 @@ class ViolationRecorderMain:
                 )
 
             # If object helmet violation add text no helmet below bounding boxes
-            if obj[8] == 1 or obj[6] in self.helmet_annotate_history:
+            if (
+                obj[8] == 1
+                or obj[6] in self.helmet_annotate_history
+                and remember_violation
+            ):
                 text = "No Helmet"
 
                 # Calculate text size
