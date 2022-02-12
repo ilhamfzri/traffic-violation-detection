@@ -124,3 +124,4 @@ class Parameter:
         self.hv_min_age = 3
         self.hv_pad_width_mul = 1.5
         self.hv_pad_height_mul = 1.5
+        self.hv_detect_interval = 5
