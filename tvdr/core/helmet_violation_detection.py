@@ -267,7 +267,7 @@ class HelmetViolationDetection:
         self.device = parameter.device
         self.model_path = parameter.hv_model_path
         self.min_age = parameter.hv_min_age
-        self.detect_interval = 10
+        self.detect_interval = parameter.hv_detect_interval
         self.conf_thres = parameter.hv_conf
         self.iou_thres = parameter.hv_iou
         self.inference_size = (parameter.hv_imgsz, parameter.hv_imgsz)
