@@ -65,6 +65,7 @@ class ConfigLoader(Parameter):
             self.hv_min_age = hvd_params["min_age"]
             self.hv_pad_height_mul = hvd_params["padding_height_multiplier"]
             self.hv_pad_width_mul = hvd_params["padding_width_multiplier"]
+            self.hv_detect_interval = hvd_params["detect_interval"]
 
             # Read General Params
             general_params = json_data["general"]
@@ -154,6 +155,7 @@ class ConfigLoader(Parameter):
         hvd_params["min_age"] = self.hv_min_age
         hvd_params["padding_height_multiplier"] = self.hv_pad_height_mul
         hvd_params["padding_width_multiplier"] = self.hv_pad_width_mul
+        hvd_params["detect_interval"] = self.hv_detect_interval
 
         # General Params
         general_params = {}
