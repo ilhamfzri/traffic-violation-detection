@@ -1,6 +1,6 @@
 python yolov5/train.py --img 640 \
---cfg cconfigs/vehicle_detection/yolov5s_scratch/vehicle_detection_model_conf.yaml \
---hyp configs/vehicle_d etection/yolov5s_scratch/vehicle_detection_hyper_conf.yaml \
+--cfg configs/vehicle_detection/yolov5s_scratch/vehicle_detection_model_conf.yaml \
+--hyp configs/vehicle_detection/yolov5s_scratch/vehicle_detection_hyper_conf.yaml \
 --batch 64 \
 --weight '' \
 --epochs 100 \
