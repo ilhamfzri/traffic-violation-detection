@@ -32,10 +32,13 @@ import torch
 import logging
 import cv2
 import numpy as np
+import sys
+import time
 
 from tvdr.utils.params import Parameter
 from tvdr.core import Sort
 from tvdr.utils.general import combine_yolo_sort_result
+
 
 from yolov5_repo.models.common import DetectMultiBackend
 from yolov5_repo.utils.torch_utils import select_device
@@ -82,8 +85,11 @@ class VehicleDetection:
         if len(im.shape) == 3:
             im = im[None]
 
+        check_1 = time.time()
         # Process inference
-        result = self.model(im)
+        for i in range(0, 2):
+            result = self.model(im)
+        print((time.time() - check_1) * 1000)
 
         # Non max suppression
         result = non_max_suppression(
@@ -114,7 +120,8 @@ class VehicleDetection:
         return result
 
     def get_without_tracking(self):
-        return self.result_without_tracking
+        result = self.post_processing(self.result_without_tracking)
+        return result
 
     def load_model(self):
 

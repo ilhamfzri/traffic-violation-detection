@@ -32,6 +32,7 @@ from tvdr.core import running_redlight
 from tvdr.utils.params import Parameter
 from tvdr.core.vehicle_detection import VehicleDetection
 from tvdr.core.helmet_violation_detection import HelmetViolationDetection
+from tvdr.core.helmet_violation_classifier import HelmetViolationDetectionClassifier
 from tvdr.core.violation_recorder_class import ViolationRecorderMain
 from tvdr.core.wrong_way import WrongWayViolationDetection
 from tvdr.core.running_redlight import RunningRedLightViolationDetection
@@ -50,7 +51,7 @@ class TrafficViolationDetectionPipelines:
 
         # Initilalize helmet violation detection
         if self.parameter.detect_helmet_violation:
-            self.hvd = HelmetViolationDetection(self.parameter)
+            self.hvd = HelmetViolationDetectionClassifier(self.parameter)
 
         # Initilalize wrongway violation detection
         if self.parameter.detect_wrongway_violation:
@@ -70,9 +71,6 @@ class TrafficViolationDetectionPipelines:
             self.vd.load_model()
 
         # Check if helmet violation detection is not loaded then load
-        if self.hvd.model_loaded == False:
-            self.hvd.load_model()
-
         if PROFILING_PROCESS:
             checkpoint1 = time.time()
 
@@ -137,6 +135,7 @@ class TrafficViolationDetectionPipelines:
             wrongway_violation_result=result_wvd,
             running_redlight_result=result_rrvd,
         )
+
         image_out = self.vr.annotate_result(image, result_final)
 
         if self.parameter.detect_running_redlight_violation:
@@ -162,7 +161,7 @@ class TrafficViolationDetectionPipelines:
         self.vr.update_params(parameter)
 
         if self.parameter.detect_helmet_violation:
-            self.hvd.load_parameters(self.parameter)
+            self.hvd.update_params(parameter)
             self.hvd.load_model()
 
         if self.parameter.detect_wrongway_violation:
