@@ -28,17 +28,15 @@
 
 
 class Parameter:
+    """This is default parameters"""
+
     def __init__(self):
-        self.yolo_model_dict = {
-            "YOLOV5 Small": "yolov5s",
-            "YOLOV5 Medium": "yolov5m",
-        }
         self.device = "cpu"
         self.video_path = ""
 
         # YOLO Vehicle Detection Params
-        self.yolo_model_path = ""
-        self.yolo_imgsz = 1080
+        self.yolo_model_path = "models/vehicle_detection/best.pt"
+        self.yolo_imgsz = 640
         self.yolo_stride = "2"
         self.yolo_conf = 0.25
         self.yolo_iou = 0.45
@@ -89,7 +87,9 @@ class Parameter:
         self.detect_wrongway_violation = True
 
         # Tracking Params
-        self.use_tracking = "SORT"  # {"No Tracker", "Deep SORT", "SORT"}
+        self.use_tracking = (
+            "SORT"  # {"Deep SORT", "SORT"} Currently only support for SORT
+        )
 
         # DeepSORT Params
         self.deepsort_model_path = "models/ckpt.t7"
@@ -117,11 +117,8 @@ class Parameter:
         self.wrongway_min_value = 50
 
         # Helmet Violations Params
-        self.hv_model_path = ""
-        self.hv_imgsz = 128
-        self.hv_conf = 0.25
-        self.hv_iou = 0.45
-        self.hv_min_age = 3
-        self.hv_pad_width_mul = 1.5
-        self.hv_pad_height_mul = 1.5
-        self.hv_detect_interval = 5
+        self.hv_model_path = "models/helmet_detection/efficientnet_b0.pt"
+        self.hv_imgsz = 224  # EfficientNet_b0 input size
+        self.hv_min_conf = 0.7
+        self.hv_min_age = 10
+        self.hv_detect_interval = 10
