@@ -46,6 +46,26 @@ class ViolationRecorderMain:
         self.detect_wrongway_violation = False
         self.detect_helmet_violation = False
 
+        self.label_maping = ["car", "motorcycle", "bus", "truck", "bycycle"]
+
+        self.vehicle_counter = {
+            "car": [],
+            "motorcycle": [],
+            "bus": [],
+            "truck": [],
+            "bycycle": [],
+        }
+
+        self.show_traffic_light_status = True
+        self.show_wrong_way_status = True
+        self.show_running_redlight_status = True
+        self.show_helmet_violation_status = True
+        self.show_vehicle_counter = True
+
+        self.helmet_violation_counter = []
+        self.running_redlight_counter = []
+        self.wrong_way_counter = []
+
         self.arrow_length = 10
 
         self.text_font = cv2.FONT_HERSHEY_DUPLEX
@@ -57,7 +77,9 @@ class ViolationRecorderMain:
         self.helmet_annotate_history = []
         pass
 
-    def annotate_result(self, img, result, remember_violation=True):
+    def annotate_result(
+        self, img, result, remember_violation=True, traffic_light="Red"
+    ):
         # result[i] = [xmin, ymin, xmax, ymax, confidence, class, object_id, direction, helmet_violation, running_redlight, wrongway]
 
         img_new = img.copy()
@@ -65,6 +87,8 @@ class ViolationRecorderMain:
         for obj in result:
             # If object running red light color bounding box red, else green
             if obj[10] == 1:
+                if obj[6] not in self.running_redlight_counter:
+                    self.running_redlight_counter.append(obj[6])
                 color_box = (0, 0, 255)
             else:
                 color_box = (0, 255, 0)
@@ -83,7 +107,8 @@ class ViolationRecorderMain:
                 confidence = obj[4]
                 label = obj[5]
 
-                text_bbox = f"{label} - {confidence:.2f} - {obj[6]}"
+                # text_bbox = f"{self.label_maping[label]} - {confidence:.2f} - {obj[6]}"
+                text_bbox = f"{self.label_maping[int(label)]} - {obj[6]}"
 
                 # Calculate text size
                 text_size, _ = cv2.getTextSize(
@@ -118,6 +143,7 @@ class ViolationRecorderMain:
                 or obj[6] in self.helmet_annotate_history
                 and remember_violation
             ):
+
                 text = "No Helmet"
 
                 # Calculate text size
@@ -139,12 +165,18 @@ class ViolationRecorderMain:
                 )
 
                 id = obj[6]
+                if id not in self.helmet_violation_counter:
+                    self.helmet_violation_counter.append(id)
+
                 if id not in self.helmet_annotate_history:
                     self.helmet_annotate_history.append(id)
 
             # Create direction arrow
             if obj[9] == 1:
                 color_arrow = (0, 0, 255)
+                id = obj[6]
+                if id not in self.wrong_way_counter:
+                    self.wrong_way_counter.append(id)
             else:
                 color_arrow = (0, 255, 0)
 
@@ -162,6 +194,11 @@ class ViolationRecorderMain:
                 cv2.LINE_AA,
                 tipLength=0.5,
             )
+
+            label = int(obj[5])
+            id = obj[6]
+            if id not in self.vehicle_counter[self.label_maping[label]]:
+                self.vehicle_counter[self.label_maping[label]].append(id)
 
         # Create detection  area
         if self.parameter.show_detection_area:
@@ -188,6 +225,159 @@ class ViolationRecorderMain:
             img_new = cv2.line(
                 img_new, start_point, end_point, (0, 0, 255), 2, cv2.LINE_AA
             )
+
+        x_info, y_info = 30, 30
+        spacing = 40
+
+        if self.show_running_redlight_status:
+            text = f"Traffic Light : {traffic_light}"
+            text_size, _ = cv2.getTextSize(text, self.text_font, 1, 2)
+            text_w, text_h = text_size
+
+            img_new = cv2.rectangle(
+                img_new,
+                pt1=(x_info - 5, y_info - 10),
+                pt2=(int(x_info + text_w + 5), int(y_info + text_h + 10)),
+                color=(0, 0, 0),
+                thickness=-1,
+            )
+
+            # Generate text
+            img_new = cv2.putText(
+                img_new,
+                text,
+                org=(x_info, int(y_info + text_h)),
+                fontFace=self.text_font,
+                fontScale=1,
+                color=(0, 255, 0),
+                thickness=2,
+                lineType=cv2.LINE_AA,
+            )
+
+            y_info = y_info + text_h + spacing
+
+        if self.show_running_redlight_status:
+            text = f"Running Red Light: {len(self.running_redlight_counter)}"
+            text_size, _ = cv2.getTextSize(text, self.text_font, 1, 2)
+            text_w, text_h = text_size
+
+            img_new = cv2.rectangle(
+                img_new,
+                pt1=(x_info - 5, y_info - 10),
+                pt2=(int(x_info + text_w + 5), int(y_info + text_h + 10)),
+                color=(0, 0, 0),
+                thickness=-1,
+            )
+
+            # Generate text
+            img_new = cv2.putText(
+                img_new,
+                text,
+                org=(x_info, int(y_info + text_h)),
+                fontFace=self.text_font,
+                fontScale=1,
+                color=(0, 255, 0),
+                thickness=2,
+                lineType=cv2.LINE_AA,
+            )
+            y_info = y_info + text_h + spacing
+
+        if self.show_wrong_way_status:
+            text = f"Wrong Way : {len(self.wrong_way_counter)}"
+            text_size, _ = cv2.getTextSize(text, self.text_font, 1, 2)
+            text_w, text_h = text_size
+
+            img_new = cv2.rectangle(
+                img_new,
+                pt1=(x_info - 5, y_info - 10),
+                pt2=(int(x_info + text_w + 5), int(y_info + text_h + 10)),
+                color=(0, 0, 0),
+                thickness=-1,
+            )
+
+            # Generate text
+            img_new = cv2.putText(
+                img_new,
+                text,
+                org=(x_info, int(y_info + text_h)),
+                fontFace=self.text_font,
+                fontScale=1,
+                color=(0, 255, 0),
+                thickness=2,
+                lineType=cv2.LINE_AA,
+            )
+            y_info = y_info + text_h + spacing
+
+        if self.show_helmet_violation_status:
+            text = f"Helmet Violation : {len(self.helmet_violation_counter)}"
+            text_size, _ = cv2.getTextSize(text, self.text_font, 1, 2)
+            text_w, text_h = text_size
+
+            img_new = cv2.rectangle(
+                img_new,
+                pt1=(x_info - 5, y_info - 10),
+                pt2=(int(x_info + text_w + 5), int(y_info + text_h + 10)),
+                color=(0, 0, 0),
+                thickness=-1,
+            )
+
+            # Generate text
+            img_new = cv2.putText(
+                img_new,
+                text,
+                org=(x_info, int(y_info + text_h)),
+                fontFace=self.text_font,
+                fontScale=1,
+                color=(0, 255, 0),
+                thickness=2,
+                lineType=cv2.LINE_AA,
+            )
+            y_info = y_info + text_h + spacing
+
+        text_dummy = "Motorcycle : 213123"
+
+        text_w, _ = text_size
+        _, img_x, _ = img.shape
+
+        x_info_vehicle, y_info_vehicle, space_y = img_x - text_w - 15, 20, 40
+        # x_info_vehicle, y_info_vehicle, space_y = img_x - text_w - 20, 15, 40
+
+        if self.show_vehicle_counter:
+            car_count = len(self.vehicle_counter["car"])
+            motorcycle_count = len(self.vehicle_counter["motorcycle"])
+            bus_count = len(self.vehicle_counter["bus"])
+            truck_count = len(self.vehicle_counter["truck"])
+
+            text = f"Car        : {car_count}\nMotorcycle : {motorcycle_count}\nBus        : {bus_count}\nTruck      : {truck_count}"
+
+            for i, line in enumerate(text.split("\n")):
+                text_size, _ = cv2.getTextSize(line, self.text_font, 1, 2)
+                text_w, text_h = text_size
+                y = y_info_vehicle + i * (text_h + space_y)
+
+                img_new = cv2.rectangle(
+                    img_new,
+                    pt1=(x_info_vehicle - 5, y - 10),
+                    pt2=(
+                        int(x_info_vehicle + text_w + 5),
+                        int(y + text_h + 10),
+                    ),
+                    color=(0, 0, 0),
+                    thickness=-1,
+                )
+
+                img_new = cv2.putText(
+                    img_new,
+                    line,
+                    org=(x_info_vehicle, int(y + text_h)),
+                    fontFace=self.text_font,
+                    fontScale=1,
+                    color=(0, 255, 0),
+                    thickness=2,
+                    lineType=cv2.LINE_AA,
+                )
+
+            # Generate text
 
         return img_new
 
@@ -323,7 +513,7 @@ class ViolationRecorderMain:
 
                 violation_record = {}
                 violation_record["vehicle_type"] = self.parameter.yolo_classes_name[
-                    str(int(result[i][5]))
+                    int(result[i][5])
                 ]
                 violation_record["img_proof"] = img_proof_path
                 violation_record["timestamp"] = f"{minutes:02}:{seconds:02}"
@@ -382,9 +572,7 @@ class ViolationRecorderMain:
                 seconds = frame_index % 60
 
                 violation_record = {}
-                violation_record["vehicle_type"] = self.parameter.yolo_classes_name[
-                    str(int(result[i][5]))
-                ]
+                violation_record["vehicle_type"] = self.label_maping[int(result[i][5])]
                 violation_record["img_proof"] = img_proof_path
 
                 violation_record["timestamp"] = f"{minutes:02}:{seconds:02}"
