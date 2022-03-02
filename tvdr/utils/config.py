@@ -58,14 +58,21 @@ class ConfigLoader(Parameter):
 
             # Read Helmet Violation Detection Params
             hvd_params = json_data["helmet_violation_detection"]
-            self.hv_model_path = hvd_params["model_path"]
-            self.hv_imgsz = hvd_params["imgsz"]
-            self.hv_conf = hvd_params["conf_threshold"]
-            self.hv_iou = hvd_params["iou_threshold"]
-            self.hv_min_age = hvd_params["min_age"]
-            self.hv_pad_height_mul = hvd_params["padding_height_multiplier"]
-            self.hv_pad_width_mul = hvd_params["padding_width_multiplier"]
-            self.hv_detect_interval = hvd_params["detect_interval"]
+            hvd_params["model_path"] = self.hv_model_path
+            hvd_params["imgsz"] = self.hv_imgsz
+            hvd_params["min_conf"] = self.hv_min_conf
+            hvd_params["min_age"] = self.hv_min_age
+            hvd_params["detect_interval"] = self.hv_detect_interval
+
+            # Parameters below it will be remove in future regarding changes from object detection to classification method
+            # self.hv_model_path = hvd_params["model_path"]
+            # self.hv_imgsz = hvd_params["imgsz"]
+            # self.hv_conf = hvd_params["conf_threshold"]
+            # self.hv_iou = hvd_params["iou_threshold"]
+            # self.hv_min_age = hvd_params["min_age"]
+            # self.hv_pad_height_mul = hvd_params["padding_height_multiplier"]
+            # self.hv_pad_width_mul = hvd_params["padding_width_multiplier"]
+            # self.hv_detect_interval = hvd_params["detect_interval"]
 
             # Read General Params
             general_params = json_data["general"]
@@ -113,8 +120,6 @@ class ConfigLoader(Parameter):
         hvd_params = {}
         hvd_params["model_path"] = self.hv_model_path
         hvd_params["imgsz"] = self.hv_imgsz
-        hvd_params["conf_threshold"] = self.hv_conf
-        hvd_params["iou_threshold"] = self.hv_iou
         hvd_params["min_age"] = self.hv_min_age
 
         ## Set SORT Params
@@ -150,12 +155,17 @@ class ConfigLoader(Parameter):
         hvd_params = {}
         hvd_params["model_path"] = self.hv_model_path
         hvd_params["imgsz"] = self.hv_imgsz
-        hvd_params["conf_threshold"] = self.hv_conf
-        hvd_params["iou_threshold"] = self.hv_iou
+        hvd_params["min_conf"] = self.hv_min_conf
         hvd_params["min_age"] = self.hv_min_age
-        hvd_params["padding_height_multiplier"] = self.hv_pad_height_mul
-        hvd_params["padding_width_multiplier"] = self.hv_pad_width_mul
         hvd_params["detect_interval"] = self.hv_detect_interval
+
+        # Parameters below it will be remove in future regarding changes from object detection to classification method
+        # hvd_params["conf_threshold"] = self.hv_conf
+        # hvd_params["iou_threshold"] = self.hv_iou
+        # hvd_params["min_age"] = self.hv_min_age
+        # hvd_params["padding_height_multiplier"] = self.hv_pad_height_mul
+        # hvd_params["padding_width_multiplier"] = self.hv_pad_width_mul
+        # hvd_params["detect_interval"] = self.hv_detect_interval
 
         # General Params
         general_params = {}
