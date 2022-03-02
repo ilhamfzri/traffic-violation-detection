@@ -45,6 +45,8 @@ logging_root = "Helmet Detection"
 
 
 class HelmetViolationDetection:
+    """Helmet Violation Detection"""
+
     def __init__(self, parameter):
         self.load_parameters(parameter)
         self.motorcycle_idx = 1
@@ -102,19 +104,19 @@ class HelmetViolationDetection:
                     violation_result.append(object_id)
                     break
 
-            if violation_state_data == True:
-                image_path_out = os.path.join(
-                    "dataset_helmet_collection/helmet", f"{time.time()}.jpg"
-                )
-            else:
-                image_path_out = os.path.join(
-                    "dataset_helmet_collection/non_helmet", f"{time.time()}.jpg"
-                )
+            # image_path_out = os.path.join(
+            #     "dataset_from_wild/sd_nanas", f"{time.time()}.jpg"
+            # )
+            # if violation_state_data == True:
+            #     image_path_out = os.path.join(
+            #         "dataset_from_wild/kelurahan_sambirejo", f"{time.time()}.jpg"
+            #     )
+            # else:
+            #     image_path_out = os.path.join(
+            #         "dataset_from_wild/kelurahan_sambirejo", f"{time.time()}.jpg"
+            #     )
 
-            cv2.imwrite(image_path_out, img_crop)
-
-        print(violation_result)
-
+            # cv2.imwrite(image_path_out, img_crop)
         return violation_result
 
     def motorcycle_and_bicycle_filtering(self, result):
@@ -166,15 +168,6 @@ class HelmetViolationDetection:
                     object_inference, object.reshape(1, 7), axis=0
                 )
 
-            # if (
-            #     self.object_history[id]["age"] > self.min_age
-            #     and self.object_history[id]["inference_state"] != True
-            # ):
-            #     object_inference = np.append(
-            #         object_inference, object.reshape(1, 7), axis=0
-            #     )
-            #     self.object_history[id]["inference_state"] = True
-
         # Remove object history if missing above the threshold
         list_delete_id = []
         for id_history in self.object_history.keys():
@@ -193,7 +186,6 @@ class HelmetViolationDetection:
         # print(f"Object Inference : {object_inference}")
 
         # Detect violation from list of objects that meet the criteria
-        print(f"TEST : {object_inference}")
         violation_result = self.detect_violation(img, object_inference)
 
         # print(f"Violation Result : {violation_result}")
@@ -257,9 +249,8 @@ class HelmetViolationDetection:
         self.model_stride = self.model.stride
         self.imgsz = check_img_size(imgsz=self.inference_size, s=self.model_stride)
 
-        # Warmup
+        # Warmup Model
         self.model.warmup(imgsz=(1, 3, *self.imgsz))
-
         self.model_loaded_state = True
 
     def load_parameters(self, parameter: Parameter):
