@@ -43,24 +43,32 @@ class HelmetViolationDetectionClassifier:
         self.motorcycle_idx = 1
         self.bicycle_idx = 4
         self.id_tracker = {}
+        self.model_path = ""
         self.missing_removal_threshold = 150
         self.index_no_helmet = 1
-        self.update_parameter(parameter)
+        self.update_params(parameter)
         self.load_model()
 
     def update(self, img0, tracking_result):
         filter_result = self.motorcycle_and_bicycle_filtering(tracking_result)
         self.tracker_record_update(filter_result)
-        object_inference = self.get_object_inference(tracking_result)
-        self.detect_violation(img0, object_inference)
+        object_inference = self.get_object_inference(filter_result)
+        violation_result = self.detect_violation(img0, object_inference)
+        return violation_result
 
-    def update_parameter(self, parameter: Parameter):
+    def update_params(self, parameter: Parameter):
+
+        model_path_temp = self.model_path
         self.min_conf = parameter.hv_min_conf
         self.min_age = parameter.hv_min_age
         self.model_path = parameter.hv_model_path
         self.detect_interval = parameter.hv_detect_interval
         self.device = "cpu"
         self.imgsz = 224
+
+        if model_path_temp != self.model_path:
+            self.load_model()
+
         # self.min_conf = (
         #     parameter.hv_min_conf if parameter.hv_min_conf is not None else 0.9
         # )
@@ -120,6 +128,7 @@ class HelmetViolationDetectionClassifier:
 
     def get_object_inference(self, result_filter):
         object_inference = np.empty((0, result_filter.shape[1]))
+        print(self.id_tracker)
         for object in result_filter:
             id = object[6]
             if (
