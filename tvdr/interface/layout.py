@@ -605,35 +605,10 @@ class MainLayout(QtWidgets.QWidget):
         # get frame from cv2 read
         ret, frame = self.vid.read()
 
-        # # get parameter traffic light frame position
-        # index_crop = self.parameter.traffic_light_area
-
-        # # croping frame to get traffic light frame
-        # self.traffic_light_frame = frame[
-        #     index_crop[1] : index_crop[3], index_crop[0] : index_crop[2]
-        # ]
-        # self.traffic_light_frame = np.ascontiguousarray(self.traffic_light_frame)
-
-        # # processing to get color of traffic light
-        # status = self.tld.detect_state(self.traffic_light_frame)
-
         # get current duration
         timestamp = int(
             self.vid.get(cv2.CAP_PROP_POS_FRAMES) / self.vid.get(cv2.CAP_PROP_FPS)
         )
-        # print("FRAME" + str(timestamp))
-
-        # # inference yolov5 and count processing time
-        # new_frame = self.yolo.inference_frame(frame, timestamp, status)
-
-        # # update inference information
-
-        # progress_value = (
-        #     self.vid.get(cv2.CAP_PROP_POS_FRAMES) / self.parameter.frame_count
-        # ) * 100
-        # self.traffic_light_state_label.setText(f"Traffic Light State \t: {status}")
-        # self.inference_fps_label.setText(f"Inference FPS \t\t: {fps:.2f}")
-        # self.inference_progress_slider.setValue(int(progress_value))
 
         frame_idx = self.vid.get(cv2.CAP_PROP_POS_FRAMES)
         new_frame = self.tvdp.update(frame, frame_idx)

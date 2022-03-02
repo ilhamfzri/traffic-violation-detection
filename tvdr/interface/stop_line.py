@@ -36,19 +36,8 @@ from PySide2 import QtCore
 from PySide2.QtCore import QLine, Qt, QPoint, QRect
 from PySide2.QtGui import QPainter, QPen, QBrush, QIcon, QPixmap
 from PySide2.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QComboBox,
-    QFormLayout,
-    QGridLayout,
-    QGroupBox,
-    QHBoxLayout,
     QLabel,
     QLayout,
-    QLineEdit,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
 )
 from PySide2 import QtGui
 import numpy as np

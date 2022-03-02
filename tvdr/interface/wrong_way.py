@@ -277,28 +277,3 @@ class WrongWayConfig(QtWidgets.QDialog):
 
         elif response == QtWidgets.QMessageBox.Cancel:
             print("LOG : Cancel")
-
-
-# class Window(QWidget):
-#     def __init__(self):
-#         super().__init__()
-#         QtWidgets.QApplication.setStyle("Fusion")
-#         self.setGeometry(150, 250, 500, 500)
-#         self.setWindowTitle("Drawing Over Image Examples Code")
-#         img = cv2.imread("samples/file-20200803-24-50u91u.jpg")
-
-#         params = Parameter()
-
-#         self.traffic_light = DetectionArea(params)
-#         self.traffic_light.exec_()
-
-#         if self.traffic_light.result() == 1:
-#             params_wrongway = self.traffic_light.get_params()
-#             print(params_wrongway)
-
-
-# if __name__ == "__main__":
-#     app = QApplication(sys.argv)
-#     win = Window()
-#     win.show()
-#     sys.exit(app.exec_())
