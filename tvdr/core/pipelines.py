@@ -136,7 +136,8 @@ class TrafficViolationDetectionPipelines:
             running_redlight_result=result_rrvd,
         )
 
-        image_out = self.vr.annotate_result(image, result_final)
+        state_tl = self.rrvd.state.title()
+        image_out = self.vr.annotate_result(image, result_final, traffic_light=state_tl)
 
         if self.parameter.detect_running_redlight_violation:
             if len(result_rrvd) > 0:
