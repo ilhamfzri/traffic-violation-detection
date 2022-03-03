@@ -91,13 +91,13 @@ class RunningRedLightViolationDetection:
 
         # return traffic light state based on number of pixel threshold
         if self.red_light_count >= self.red_light_params["threshold"]:
-            self.last_state = "RED"
+            # self.last_state = "RED"
             return "RED"
         elif self.green_light_count >= self.green_light_params["threshold"]:
-            self.last_state = "GREEN"
+            # self.last_state = "GREEN"
             return "GREEN"
         else:
-            return self.last_state
+            return "YELLOW"
 
     def update(self, img, result):
         running_redlight_result = []
