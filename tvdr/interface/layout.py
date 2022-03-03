@@ -575,6 +575,7 @@ class MainLayout(QtWidgets.QWidget):
     @Slot()
     def start_inference(self):
         print("start inference")
+
         if self.parameter.video_path == "":
             print("Please load video first!")
 
@@ -587,8 +588,10 @@ class MainLayout(QtWidgets.QWidget):
                 self.parameter.video_fps = self.vid.get(cv2.CAP_PROP_FPS)
                 self.parameter.frame_count = self.vid.get(cv2.CAP_PROP_FRAME_COUNT)
 
-                print(self.parameter.video_fps)
-                print(self.parameter.frame_count)
+        self.tvdp.reset_state()
+        self.tvdp.video_recorder_init(
+            self.parameter.video_path, f"{self.parameter.video_path[:-4]}_Result.mp4"
+        )
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
@@ -599,7 +602,6 @@ class MainLayout(QtWidgets.QWidget):
         self.timer.stop()
 
     def update_frame(self):
-
         start_time = time.time()
 
         # get frame from cv2 read
@@ -612,6 +614,8 @@ class MainLayout(QtWidgets.QWidget):
 
         frame_idx = self.vid.get(cv2.CAP_PROP_POS_FRAMES)
         new_frame = self.tvdp.update(frame, frame_idx)
+
+        self.tvdp.video_recorder_update(new_frame)
 
         end_time = time.time()
         fps = 1 / (end_time - start_time)
@@ -628,6 +632,10 @@ class MainLayout(QtWidgets.QWidget):
         # convert and shows new frame inference in pyqt5 label
         img = self.convert_cv_qt(new_frame)
         self.image_frame.setPixmap(QtGui.QPixmap.fromImage(img))
+
+        if frame_idx == self.parameter.frame_count - 1:
+            self.timer.stop()
+            self.tvdp.video_recorder_close()
 
     def update_parameter(self):
         self.tld.update_parameters(self.parameter)
