@@ -48,6 +48,9 @@ class WrongWayViolationDetection:
         self.direction_violation = parameter.wrongway_direction_degree
         self.direction_threshold = parameter.wrongway_threshold_degree
         self.object_history = {}
+    
+    def reset_state(self):
+        self.object_history = {}
 
     def cartesian_to_polar(self, x, y):
         # Convert cartesian to polar
