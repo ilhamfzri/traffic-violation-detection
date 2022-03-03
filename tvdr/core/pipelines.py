@@ -26,6 +26,9 @@
 # AUTHORS
 # Ilham Fazri - ilhamfazri3rd@gmail.com
 import os
+import sys
+import logging
+import cv2
 
 from unittest import result
 from tvdr.core import running_redlight
@@ -42,114 +45,129 @@ import time
 PROFILING_PROCESS = True
 
 
+logger = logging.getLogger("tvdr")
+
+
 class TrafficViolationDetectionPipelines:
+    """Traffic Violation Detection Pipelines"""
+
     def __init__(self, parameter: Parameter):
         self.parameter = parameter
 
-        # Initialize vehicle detection
+        # Initialize Vehicle Detection
+        logging.info("Initializing Vehicle Detection..")
         self.vd = VehicleDetection(self.parameter)
 
         # Initilalize helmet violation detection
+        logging.info("Initializing Helmet Violation Detection..")
         if self.parameter.detect_helmet_violation:
             self.hvd = HelmetViolationDetectionClassifier(self.parameter)
 
         # Initilalize wrongway violation detection
+        logging.info("Initializing WrongWay Violation Detection..")
         if self.parameter.detect_wrongway_violation:
             self.wvd = WrongWayViolationDetection(self.parameter)
 
         # Initializer running redlight violation detection
+        logging.info("Initializing Running Red Light Detection..")
         if self.parameter.detect_running_redlight_violation:
             self.rrvd = RunningRedLightViolationDetection(self.parameter)
 
         # Initialize violation recorder
+        logging.info("Initializing Violation Recorder..")
         self.vr = ViolationRecorderMain(self.parameter)
-        # self.update_parameter(parameter)
 
     def update(self, image, frame_idx):
         # Check if model vehicle detection is not loaded then load
+        logger.debug(f"\n\n")
+
+        check_pipeline = time.time()
+
         if self.vd.model_loaded == False:
             self.vd.load_model()
 
-        # Check if helmet violation detection is not loaded then load
-        if PROFILING_PROCESS:
-            checkpoint1 = time.time()
-
-        # Result vehicle detection
-        print("Process Result Vehicle Detection")
+        # Vehicle Detection Process
+        checkpoint = time.time()
         result_vd = self.vd.predict(image)
+        logger.debug(
+            f"Vehicle Detection Process Time : {(time.time()-checkpoint)*1000:.1f}ms"
+        )
 
-        if PROFILING_PROCESS:
-            checkpoint2 = time.time()
-
-        # Update helmet violation detection
-        print("Preocess Helmet Detection")
-
+        # Helmet Violation Detection Process
         if self.parameter.detect_helmet_violation:
+            checkpoint = time.time()
             result_hvd = self.hvd.update(image, result_vd)
+            logger.debug(
+                f"Helmet Violation Detection Process Time : {(time.time()-checkpoint)*1000:.1f}ms"
+            )
 
-        if PROFILING_PROCESS:
-            checkpoint3 = time.time()
-
+        # Wrong-way Violation Detection Process
         if self.parameter.detect_wrongway_violation:
+            checkpoint = time.time()
             result_wvd, direction_data = self.wvd.update(result_vd)
+            logger.debug(
+                f"Wrong-way Violaton Detection Process Time : {(time.time()-checkpoint)*1000:.1f}ms"
+            )
 
-        if PROFILING_PROCESS:
-            checkpoint4 = time.time()
-
+        # Running Red Light Violation Detection Process
         if self.parameter.detect_running_redlight_violation:
+            checkpoint = time.time()
             result_rrvd = self.rrvd.update(image, result_vd)
-
-        if PROFILING_PROCESS:
-            checkpoint5 = time.time()
-
-        if PROFILING_PROCESS:
-            # os.system("cls" if os.name == "nt" else "clear")
-            print(f"Task    \t\t\t\t| Time (ms)\t|")
-            print(
-                f"Vehicle Detection \t\t\t| {(checkpoint2-checkpoint1)*1000:.1f}\t\t|"
-            )
-            print(
-                f"Helmet Violation Detection \t\t| {(checkpoint3-checkpoint2)*1000:.1f}\t\t|"
-            )
-            print(
-                f"Wrongway Violation Detection \t\t| {(checkpoint4-checkpoint3)*1000:.1f}\t\t|"
-            )
-            print(
-                f"Running Redlight Violation Detection \t| {(checkpoint5-checkpoint4)*1000:.1f}\t\t|"
+            state_tl = self.rrvd.state.title()
+            logger.debug(
+                f"Running Red Light Process Time : {(time.time()-checkpoint)*1000:.1f}ms"
             )
 
-        # For troubleshoting
-        if len(result_hvd) > 0:
-            print(f"Helmet Violation : :{result_hvd}")
+        # Print Violation Detected (For troubleshoot purpose)
+        if result_hvd is not None and len(result_hvd) > 0:
+            logger.debug(f"Helmet Violation : {result_hvd}")
 
-        if len(result_wvd) > 0:
-            print(f"Wrongway Violation : {result_wvd}")
+        if result_wvd is not None and len(result_wvd) > 0:
+            logger.debug(f"Helmet Violation : {result_wvd}")
 
-        if len(result_rrvd) > 0:
-            print(f"Running Red Light Violation : {result_rrvd}")
+        if result_rrvd is not None and len(result_rrvd) > 0:
+            logger.debug(f"Running Red Light Violationn : {result_rrvd}")
 
-        result_final = self.vr.detection_combiner(
+        # Combine result of each downstream task to make the array result consistent
+
+        checkpoint = time.time()
+        result_combine = self.vr.detection_combiner(
             vehicle_detection_result=result_vd,
             direction_data=direction_data,
             helmet_violation_result=result_hvd,
             wrongway_violation_result=result_wvd,
             running_redlight_result=result_rrvd,
         )
+        logger.debug(f"Combiner Process Time : {(time.time()-checkpoint)*1000:.1f}ms")
 
-        state_tl = self.rrvd.state.title()
-        image_out = self.vr.annotate_result(image, result_final, traffic_light=state_tl)
+        # Create annotate of image
+        checkpoint = time.time()
+        image_out = self.vr.annotate_result(
+            image,
+            result_combine,
+            traffic_light=state_tl if state_tl is not None else None,
+        )
+        logger.debug(f"Annotate Process Time : {(time.time()-checkpoint)*1000:.1f}ms")
 
-        if self.parameter.detect_running_redlight_violation:
-            if len(result_rrvd) > 0:
-                self.vr.write_violation_running_red_light(
-                    result_final, image, frame_idx
-                )
+        checkpoint = time.time()
+        # self.vr.video_recorder_update(image_out)
+        logger.debug(
+            f"Video Recorder Process Time : {(time.time()-checkpoint)*1000:.1f}ms"
+        )
 
-        if self.parameter.detect_wrongway_violation:
-            if len(result_wvd) > 0:
-                self.vr.write_violation_wrongway(result_final, image, frame_idx)
+        # if self.parameter.detect_running_redlight_violation:
+        #     if len(result_rrvd) > 0:
+        #         self.vr.write_violation_running_red_light(
+        #             result_combine, image, frame_idx
+        #         )
 
-        self.vr.video_recorder_update(image_out)
+        # if self.parameter.detect_wrongway_violation:
+        #     if len(result_wvd) > 0:
+        #         self.vr.write_violation_wrongway(result_combine, image, frame_idx)
+
+        logger.debug(
+            f"Total Processing Time :  {(time.time()-check_pipeline)*1000:.1f}ms"
+        )
 
         return image_out
 
@@ -163,7 +181,6 @@ class TrafficViolationDetectionPipelines:
 
         if self.parameter.detect_helmet_violation:
             self.hvd.update_params(parameter)
-            self.hvd.load_model()
 
         if self.parameter.detect_wrongway_violation:
             self.wvd.update_params(parameter)
@@ -172,6 +189,35 @@ class TrafficViolationDetectionPipelines:
             self.rrvd.update_params(parameter)
 
         self.vr.database_writer_init("result")
+
+    def reset_state(self):
+
+        logger.info("Resetting State")
+        self.vd.reset_state()
+        self.hvd.reset_state()
+        self.wvd.reset_state()
+        self.rrvd = RunningRedLightViolationDetection(self.parameter)
+        self.vr = ViolationRecorderMain(self.parameter)
+
+    def video_recorder_init(self, video_path, output_path):
+        vid = cv2.VideoCapture(video_path)
+        _, frame = vid.read()
+        fps = vid.get(cv2.CAP_PROP_FPS)
+        height, width, _ = frame.shape
+
+        fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
+        self.video_writer = cv2.VideoWriter(
+            output_path,
+            fourcc=fourcc,
+            fps=fps,
+            frameSize=(width, height),
+        )
+
+    def video_recorder_update(self, frame):
+        self.video_writer.write(frame)
+
+    def video_recorder_close(self):
+        self.video_writer.release()
 
     def get_traffic_light_state(self):
         return self.rrvd.state
