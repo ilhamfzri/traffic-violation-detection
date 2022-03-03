@@ -215,7 +215,7 @@ def associate_detections_to_trackers(detections, trackers, iou_threshold=0.3):
         if t not in matched_indices[:, 1]:
             unmatched_trackers.append(t)
 
-    # filter out matched with low IOU
+    # filter out matched with low IOUs
     matches = []
     for m in matched_indices:
         if iou_matrix[m[0], m[1]] < iou_threshold:
@@ -292,6 +292,10 @@ class Sort(object):
         if len(ret) > 0:
             return np.concatenate(ret)
         return np.empty((0, 5))
+    
+    def reset_count(self):
+        self.trackers = []
+        KalmanBoxTracker.count = 0
 
 
 def parse_args():
