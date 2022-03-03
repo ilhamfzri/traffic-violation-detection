@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import cv2
 import math
+import time
 
 from scipy.spatial import distance
 
@@ -23,44 +24,18 @@ def sort_validity(sort: np.ndarray, frame_shape):
 
 
 def combine_yolo_sort_result(yolo: np.ndarray, sort: np.ndarray):
-
-    new_sort = np.empty((0, 7))
-    for sort_data in sort:
-        distance_calculate = []
-        for i in range(0, yolo.shape[0]):
-            yolo_data = yolo[i]
-            x = np.array(
-                [yolo_data[0], yolo_data[1], yolo_data[2], yolo_data[3]],
-                dtype=np.float32,
-            )
-            y = np.array(
-                [
-                    sort_data[0],
-                    sort_data[1],
-                    sort_data[2],
-                    sort_data[3],
-                ],
-                dtype=np.float32,
-            )
-            similarity = 1 - distance.cosine(x, y)
-            distance_calculate.append(similarity)
-
-        index = np.argmax(distance_calculate)
-
-        new_data = np.array(
-            [
-                sort_data[0],
-                sort_data[1],
-                sort_data[2],
-                sort_data[3],
-                yolo[index][4],
-                yolo[index][5],
-                sort_data[4],
-            ]
-        )
-        new_sort = np.vstack((new_sort, new_data))
-
-    return new_sort
+    new_sort_alg2 = np.empty((0, 7))
+    yolo_ref = torch.Tensor(yolo[:, 0:4])
+    for obj in sort:
+        bbox_sort = torch.Tensor(obj[0:4])
+        id = int(obj[4])
+        dist = (bbox_sort - yolo_ref).abs()
+        sum = torch.sum(dist, dim=1)
+        index = torch.argmin(sum)
+        object_yolo = yolo[index]
+        x = np.append(object_yolo, [id])
+        new_sort_alg2 = np.vstack((new_sort_alg2, x))
+    return new_sort_alg2
 
 
 def combine_yolo_deepsort_result(yolo: np.ndarray, deep_sort: np.ndarray):
