@@ -38,6 +38,7 @@ import time
 from tvdr.utils.params import Parameter
 from tvdr.core import Sort
 from tvdr.utils.general import combine_yolo_sort_result
+from tvdr.utils.augmentations import letterbox
 
 
 from yolov5_repo.models.common import DetectMultiBackend
@@ -47,23 +48,24 @@ from yolov5_repo.utils.augmentations import letterbox
 from yolov5_repo.utils.datasets import LoadImages
 
 logging_root = "Vehicle Detection"
-
+logger = logging.getLogger("tvdr")
+DEBUG = False
 
 class VehicleDetection:
     def __init__(self, parameter: Parameter):
         self.load_parameters(parameter)
-
-        # SORT initialize
         self.sort = Sort(
             self.parameter.sort_max_age,
             self.parameter.sort_min_hits,
             self.parameter.sort_iou_threshold,
         )
-
         self.model_loaded_state = self.load_model()
+    
+    def reset_state(self):
+        logger.info("VD : Resetting SORT State..")
+        self.sort.reset_count()
 
     def predict(self, img0):
-
         # Padding image
         im = letterbox(
             img0,
@@ -86,10 +88,10 @@ class VehicleDetection:
             im = im[None]
 
         check_1 = time.time()
-        # Process inference
-        for i in range(0, 2):
-            result = self.model(im)
-        print((time.time() - check_1) * 1000)
+        result = self.model(im)
+
+        #For debuging inference time
+        if DEBUG: logger.debug(f"VD Inference Time : {(time.time() - check_1) * 1000:.1f}ms")
 
         # Non max suppression
         result = non_max_suppression(
@@ -110,12 +112,17 @@ class VehicleDetection:
         self.result_without_tracking = result
 
         # Tracking algorithm
-        if self.parameter.use_tracking != "No Tracker":
-            result = self.object_tracking(result)
+        # if self.parameter.use_tracking != "No Tracker":
+        check = time.time()
+        result = self.object_tracking(result)
+
+        if DEBUG: logger.debug(f"VD Tracking Time : {(time.time() - check) * 1000:.1f}ms")
 
         # Post processing
         if len(self.parameter.detection_area) > 3:
+            check = time.time()
             result = self.post_processing(result)
+            if DEBUG: logger.debug(f"VD Post Processing Time : {(time.time() - check) * 1000:.1f}ms")
 
         return result
 
@@ -172,8 +179,16 @@ class VehicleDetection:
         # Process SORT tracking algorithm
         if self.parameter.use_tracking == "SORT":
             bbox_result = yolo_result[:, 0:4]
+            time_0 = time.time()
             sort_result = self.sort.update(bbox_result)
+
+            if DEBUG: logger.debug(f"VD SORT Time :  {(time.time() - time_0) * 1000:.1f}ms")
+            check_2 = time.time()
+
+            
             tracking_result = combine_yolo_sort_result(yolo_result, sort_result)
+            if DEBUG: logger.debug(f"VD Combine Time :  {(time.time() - check_2) * 1000:.1f}ms")
+
             return tracking_result
 
     def post_processing(self, result):
@@ -226,7 +241,6 @@ class VehicleDetection:
                 result_post = np.append(
                     result_post, object.reshape(1, result.shape[1]), axis=0
                 )
-
         return result_post
 
     def model_loaded(self):
@@ -235,3 +249,5 @@ class VehicleDetection:
             return True
         else:
             return False
+
+    
