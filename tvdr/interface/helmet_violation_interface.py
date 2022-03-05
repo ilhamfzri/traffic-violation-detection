@@ -6,7 +6,7 @@ import numpy as np
 from tvdr.utils.params import Parameter
 from tvdr.core.vehicle_detection import VehicleDetection
 from tvdr.core.violation_recorder_class import ViolationRecorderMain
-from tvdr.core.helmet_violation_detection import HelmetViolationDetection
+from tvdr.core.helmet_violation_classifier import HelmetViolationDetectionClassifier
 from PySide2 import QtWidgets, QtCore, QtGui
 
 logging_root = "Helmet Violation Interface"
@@ -14,6 +14,8 @@ logging.basicConfig(level=logging.INFO)
 
 
 class HelmetViolationInterface(QtWidgets.QDialog):
+    """Helmet Violation Configuration Interface"""
+
     def __init__(self, parameter: Parameter):
         super().__init__()
         self.parameter = parameter
@@ -22,10 +24,11 @@ class HelmetViolationInterface(QtWidgets.QDialog):
         self.vd = VehicleDetection(parameter)
 
         # Initialize Violation Recorder
+        # Need it for visualize detection result
         self.vr = ViolationRecorderMain(parameter)
 
         # Initialize Helmet Violation Detection
-        self.hvd = HelmetViolationDetection(parameter)
+        self.hvd = HelmetViolationDetectionClassifier(parameter)
 
         self.size_window_h = 600
 
@@ -146,8 +149,7 @@ class HelmetViolationInterface(QtWidgets.QDialog):
             self.parameter.hv_model_path = fileName
 
     def set_main_config_layout(self):
-
-        # Inference size
+        # Image Size
         self.inference_size_layout = QtWidgets.QHBoxLayout()
         self.inference_size_spin_box = QtWidgets.QDoubleSpinBox()
         self.inference_size_spin_box.setMinimum(0)
@@ -155,34 +157,25 @@ class HelmetViolationInterface(QtWidgets.QDialog):
         self.inference_size_layout.addWidget(QtWidgets.QLabel("Inference Size"))
         self.inference_size_layout.addWidget(self.inference_size_spin_box)
 
-        # Object threshold
-        self.object_threshold_layout = QtWidgets.QHBoxLayout()
-        self.object_threshold_spinbox = QtWidgets.QDoubleSpinBox()
-        self.object_threshold_spinbox.setMaximum(1)
-        self.object_threshold_spinbox.setMinimum(0)
-        self.object_threshold_spinbox.setSingleStep(0.01)
+        # Minimum Confidence Threshold
+        self.minimum_confidence_layout = QtWidgets.QHBoxLayout()
+        self.minimum_confidence_spinbox = QtWidgets.QDoubleSpinBox()
+        self.minimum_confidence_spinbox.setMaximum(1)
+        self.minimum_confidence_spinbox.setMinimum(0)
+        self.minimum_confidence_spinbox.setSingleStep(0.01)
 
-        self.object_threshold_spinbox.setValue(0.5)
-        self.object_threshold_layout.addWidget(QtWidgets.QLabel("Object Threshold"))
-        self.object_threshold_layout.addWidget(self.object_threshold_spinbox)
+        self.minimum_confidence_spinbox.setValue(0.5)
+        self.minimum_confidence_layout.addWidget(QtWidgets.QLabel("Minimum Confidence"))
+        self.minimum_confidence_layout.addWidget(self.minimum_confidence_spinbox)
 
-        # IOU threshold
-        self.iou_threshold_layout = QtWidgets.QHBoxLayout()
-        self.iou_threshold_spinbox = QtWidgets.QDoubleSpinBox()
-        self.iou_threshold_spinbox.setMaximum(1)
-        self.iou_threshold_spinbox.setMinimum(0)
-        self.iou_threshold_spinbox.setSingleStep(0.01)
-        self.iou_threshold_layout.addWidget(QtWidgets.QLabel("IOU Threshold"))
-        self.iou_threshold_layout.addWidget(self.iou_threshold_spinbox)
-
-        # IOU threshold
-        self.iou_threshold_layout = QtWidgets.QHBoxLayout()
-        self.iou_threshold_spinbox = QtWidgets.QDoubleSpinBox()
-        self.iou_threshold_spinbox.setMaximum(1)
-        self.iou_threshold_spinbox.setMinimum(0)
-        self.iou_threshold_spinbox.setSingleStep(0.01)
-        self.iou_threshold_layout.addWidget(QtWidgets.QLabel("IOU Threshold"))
-        self.iou_threshold_layout.addWidget(self.iou_threshold_spinbox)
+        # Detect Interval
+        self.detect_interval_layout = QtWidgets.QHBoxLayout()
+        self.detect_interval_spinbox = QtWidgets.QDoubleSpinBox()
+        self.detect_interval_spinbox.setMaximum(1)
+        self.detect_interval_spinbox.setMinimum(0)
+        self.detect_interval_spinbox.setSingleStep(0.01)
+        self.detect_interval_layout.addWidget(QtWidgets.QLabel("Detect Interval"))
+        self.detect_interval_layout.addWidget(self.detect_interval_spinbox)
 
         # Minimum Age
         self.minimum_age_layout = QtWidgets.QHBoxLayout()
@@ -193,32 +186,6 @@ class HelmetViolationInterface(QtWidgets.QDialog):
         self.minimum_age_layout.addWidget(QtWidgets.QLabel("Minimum Age"))
         self.minimum_age_layout.addWidget(self.minimum_age_spinbox)
 
-        # Padding Width Multiplier
-        self.padding_width_multiplier_layout = QtWidgets.QHBoxLayout()
-        self.padding_width_multiplier_spinbox = QtWidgets.QDoubleSpinBox()
-        self.padding_width_multiplier_spinbox.setMinimum(1)
-        self.padding_width_multiplier_spinbox.setMaximum(5)
-        self.padding_width_multiplier_spinbox.setSingleStep(0.1)
-        self.padding_width_multiplier_layout.addWidget(
-            QtWidgets.QLabel("Padding Width Multipler")
-        )
-        self.padding_width_multiplier_layout.addWidget(
-            self.padding_width_multiplier_spinbox
-        )
-
-        # Padding Height Multiplier
-        self.padding_height_multiplier_layout = QtWidgets.QHBoxLayout()
-        self.padding_height_multiplier_spinbox = QtWidgets.QDoubleSpinBox()
-        self.padding_height_multiplier_spinbox.setMinimum(1)
-        self.padding_height_multiplier_spinbox.setMaximum(5)
-        self.padding_height_multiplier_spinbox.setSingleStep(0.1)
-        self.padding_height_multiplier_layout.addWidget(
-            QtWidgets.QLabel("Padding Height Multipler")
-        )
-        self.padding_height_multiplier_layout.addWidget(
-            self.padding_height_multiplier_spinbox
-        )
-
         # Apply Parameters
         self.apply_parameter_button = QtWidgets.QPushButton("Apply Parameters")
         self.apply_parameter_button.clicked.connect(self.set_apply_parameter)
@@ -228,12 +195,10 @@ class HelmetViolationInterface(QtWidgets.QDialog):
         self.main_config = QtWidgets.QGroupBox("Parameters Configuration")
 
         self.main_config_layout.addLayout(self.inference_size_layout)
-        self.main_config_layout.addLayout(self.object_threshold_layout)
-        self.main_config_layout.addLayout(self.object_threshold_layout)
-        self.main_config_layout.addLayout(self.iou_threshold_layout)
+        self.main_config_layout.addLayout(self.minimum_confidence_layout)
+        self.main_config_layout.addLayout(self.minimum_confidence_layout)
+        self.main_config_layout.addLayout(self.detect_interval_layout)
         self.main_config_layout.addLayout(self.minimum_age_layout)
-        self.main_config_layout.addLayout(self.padding_width_multiplier_layout)
-        self.main_config_layout.addLayout(self.padding_height_multiplier_layout)
         self.main_config_layout.addWidget(self.apply_parameter_button)
 
         self.main_config.setLayout(self.main_config_layout)
@@ -243,31 +208,20 @@ class HelmetViolationInterface(QtWidgets.QDialog):
     def set_apply_parameter(self):
         # Apply parameters
         self.parameter.hv_imgsz = int(self.inference_size_spin_box.value())
-        self.parameter.hv_conf = self.object_threshold_spinbox.value()
-        self.parameter.hv_iou = self.iou_threshold_spinbox.value()
+        self.parameter.hv_min_conf = self.minimum_confidence_spinbox.value()
+        self.parameter.hv_detect_interval = self.detect_interval_spinbox.value()
         self.parameter.hv_min_age = int(self.minimum_age_spinbox.value())
-        self.parameter.hv_pad_width_mul = float(
-            self.padding_width_multiplier_spinbox.value()
-        )
-        self.parameter.hv_pad_height_mul = float(
-            self.padding_height_multiplier_spinbox.value()
-        )
 
         self.update_parameter_layout()
-        self.hvd.load_parameters(self.parameter)
-        self.hvd.load_model()
+        self.hvd.update_params(self.parameter)
 
     def update_parameter_layout(self):
         # To update layout visualization value
         self.model_lineedit.setText(self.parameter.hv_model_path)
         self.inference_size_spin_box.setValue(self.parameter.hv_imgsz)
-        self.object_threshold_spinbox.setValue(self.parameter.hv_conf)
-        self.iou_threshold_spinbox.setValue(self.parameter.hv_iou)
+        self.minimum_confidence_spinbox.setValue(self.parameter.hv_min_conf)
+        self.detect_interval_spinbox.setValue(self.parameter.hv_detect_interval)
         self.minimum_age_spinbox.setValue(self.parameter.hv_min_age)
-        self.padding_height_multiplier_spinbox.setValue(
-            self.parameter.hv_pad_height_mul
-        )
-        self.padding_width_multiplier_spinbox.setValue(self.parameter.hv_pad_width_mul)
 
     def save_configuration(self):
         msg = QtWidgets.QMessageBox()
@@ -303,13 +257,10 @@ class HelmetViolationInterface(QtWidgets.QDialog):
             logging.info(f"{logging_root}: Load Vehicle Detection Model")
             self.vd.load_model()
 
-        # Load helmet violation model if not loaded
-        if self.hvd.model_loaded() != True:
-            logging.info(f"{logging_root}: Load Helmet Violation Detection Model")
-            self.hvd.load_model()
-
         # Inference frame data to detect vehicle
         result = self.vd.predict(self.frame_data)
+
+        print(result)
 
         # Add dummy ID for consistency
         # result_new = np.empty((0, result.shape[1] + 1))

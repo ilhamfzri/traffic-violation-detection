@@ -149,7 +149,7 @@ class MainLayout(QtWidgets.QWidget):
 
     def set_image_layout(self):
         self.image_frame = QtWidgets.QLabel()
-        self.image = cv2.imread("samples/file-20200803-24-50u91u.jpg")
+        self.image = cv2.imread("samples\grey.jpg")
 
         self.image = self.convert_cv_qt(self.image)
         self.image_frame.setPixmap(QtGui.QPixmap.fromImage(self.image))

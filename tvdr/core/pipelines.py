@@ -78,7 +78,6 @@ class TrafficViolationDetectionPipelines:
         self.vr = ViolationRecorderMain(self.parameter)
 
     def update(self, image, frame_idx):
-        # Check if model vehicle detection is not loaded then load
         logger.debug(f"\n\n")
 
         check_pipeline = time.time()
