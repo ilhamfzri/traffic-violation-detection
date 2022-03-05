@@ -2,6 +2,7 @@ import argparse
 import cv2
 import sys
 import time
+import logging
 
 sys.path.append("yolov5_repo")
 
@@ -10,6 +11,12 @@ from tvdr.utils.params import Parameter
 from tvdr.utils.config import ConfigLoader
 from tvdr.utils.path import create_folder
 from tvdr.core.pipelines import TrafficViolationDetectionPipelines
+
+logging.basicConfig()
+
+logger = "tvdr"
+logger = logging.getLogger("tvdr")
+logger.setLevel(logging.INFO)
 
 
 def parser():
@@ -27,7 +34,7 @@ def parser():
         "--device", type=str, default="cpu", help="set this to gpu if you have cuda"
     )
     parser.add_argument(
-        "--output_dir", type=str, default="result", help="inference_result"
+        "--output_path", type=str, default="result", help="inference_result"
     )
     return parser
 
@@ -36,6 +43,7 @@ def main():
     args = parser().parse_args()
     create_folder(args.output_dir)
 
+    checkpoint_time = time.time()
     # Load configuration
     cfg = ConfigLoader()
     parameter = Parameter()
@@ -69,7 +77,13 @@ def main():
     for i in tqdm(range(0, frame_count)):
         _, frame = vid.read()
         result_frame = pipeline.update(frame, i)
+        checkpoint = time.time()
         pipeline.vr.video_recorder_update(result_frame)
+        logger.debug(
+            f"Video Recorder Process Time : {(time.time()-checkpoint)*1000:.1f}ms"
+        )
+
+    print(f"Total Processing Time : {time.time()-checkpoint_time}s")
 
 
 if __name__ == "__main__":
