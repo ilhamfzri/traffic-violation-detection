@@ -1,6 +1,5 @@
 import json
-from tvdr.core import yolo
-from tvdr.utils import general
+import logging
 from tvdr.utils.params import Parameter
 
 
@@ -39,15 +38,15 @@ class ConfigLoader(Parameter):
             self.sort_max_age = sort_params["max_age"]
             self.sort_iou_threshold = sort_params["iou_threshold"]
 
-            deepsort_params = tracking_params["deepsort"]
-            self.deepsort_model_path = deepsort_params["model_path"]
-            self.deepsort_max_dist = deepsort_params["max_dist"]
-            self.deepsort_min_confidence = deepsort_params["min_confidence"]
-            self.deepsort_max_iou_distance = deepsort_params["max_iou_distance"]
-            self.deepsort_max_age = deepsort_params["max_age"]
-            self.deepsort_n_init = deepsort_params["n_init"]
-            self.deepsort_nn_budget = deepsort_params["nn_budget"]
-            self.deepsort_use_cuda = deepsort_params["use_cuda"]
+            # deepsort_params = tracking_params["deepsort"]
+            # self.deepsort_model_path = deepsort_params["model_path"]
+            # self.deepsort_max_dist = deepsort_params["max_dist"]
+            # self.deepsort_min_confidence = deepsort_params["min_confidence"]
+            # self.deepsort_max_iou_distance = deepsort_params["max_iou_distance"]
+            # self.deepsort_max_age = deepsort_params["max_age"]
+            # self.deepsort_n_init = deepsort_params["n_init"]
+            # self.deepsort_nn_budget = deepsort_params["nn_budget"]
+            # self.deepsort_use_cuda = deepsort_params["use_cuda"]
 
             # Read Wrong Way Params
             wrongway_params = json_data["wrong_way"]
@@ -129,20 +128,20 @@ class ConfigLoader(Parameter):
         sort_params["iou_threshold"] = self.sort_iou_threshold
 
         ## Set DeepSORT Params
-        deepsort_params = {}
-        deepsort_params["model_path"] = self.deepsort_model_path
-        deepsort_params["max_dist"] = self.deepsort_max_dist
-        deepsort_params["min_confidence"] = self.deepsort_min_confidence
-        deepsort_params["max_iou_distance"] = self.deepsort_max_iou_distance
-        deepsort_params["max_age"] = self.deepsort_max_age
-        deepsort_params["n_init"] = self.deepsort_n_init
-        deepsort_params["nn_budget"] = self.deepsort_nn_budget
-        deepsort_params["use_cuda"] = self.deepsort_use_cuda
+        # deepsort_params = {}
+        # deepsort_params["model_path"] = self.deepsort_model_path
+        # deepsort_params["max_dist"] = self.deepsort_max_dist
+        # deepsort_params["min_confidence"] = self.deepsort_min_confidence
+        # deepsort_params["max_iou_distance"] = self.deepsort_max_iou_distance
+        # deepsort_params["max_age"] = self.deepsort_max_age
+        # deepsort_params["n_init"] = self.deepsort_n_init
+        # deepsort_params["nn_budget"] = self.deepsort_nn_budget
+        # deepsort_params["use_cuda"] = self.deepsort_use_cuda
 
         tracking_params = {}
         tracking_params["use_tracking"] = self.use_tracking
         tracking_params["sort"] = sort_params
-        tracking_params["deepsort"] = deepsort_params
+        # tracking_params["deepsort"] = deepsort_params
 
         # Wrong Way Params
         wrongway_params = {}

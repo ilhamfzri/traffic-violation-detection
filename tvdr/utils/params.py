@@ -31,10 +31,10 @@ class Parameter:
     """This is default parameters"""
 
     def __init__(self):
-        self.device = "cpu"
+        self.device = "gpu"
         self.video_path = ""
 
-        # YOLO Vehicle Detection Params
+        # Vehicle Detectionb Parameters
         self.yolo_model_path = "models/vehicle_detection/best.pt"
         self.yolo_imgsz = 640
         self.yolo_stride = "2"
@@ -51,7 +51,7 @@ class Parameter:
         self.yolo_multi_label = False
         self.yolo_max_detection = 500
 
-        # Traffic Light Params
+        # Traffic Light Recognition Parameters
         self.traffic_light_set_view = 0
         self.traffic_light_post_processing = 0
         self.traffic_light_area = [0, 20, 100, 300]
@@ -64,7 +64,6 @@ class Parameter:
             "v_max": 255,
             "threshold": 14,
         }
-
         self.traffic_light_green_light = {
             "h_min": 36,
             "h_max": 70,
@@ -91,15 +90,15 @@ class Parameter:
             "SORT"  # {"Deep SORT", "SORT"} Currently only support for SORT
         )
 
-        # DeepSORT Params
-        self.deepsort_model_path = "models/ckpt.t7"
-        self.deepsort_max_dist = 0.2
-        self.deepsort_min_confidence = 0.3
-        self.deepsort_max_iou_distance = 0.7
-        self.deepsort_max_age = 70
-        self.deepsort_n_init = 3
-        self.deepsort_nn_budget = 100
-        self.deepsort_use_cuda = False
+        # # DeepSORT Params
+        # self.deepsort_model_path = "models/ckpt.t7"
+        # self.deepsort_max_dist = 0.2
+        # self.deepsort_min_confidence = 0.3
+        # self.deepsort_max_iou_distance = 0.7
+        # self.deepsort_max_age = 70
+        # self.deepsort_n_init = 3
+        # self.deepsort_nn_budget = 100
+        # self.deepsort_use_cuda = False
 
         # SORT Params
         self.sort_min_hits = 3
