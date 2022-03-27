@@ -17,6 +17,12 @@ class VehicleDetectionConfig:
         classes_idx: List[int] = [0, 1, 2, 3, 4],
         classes_names: List[str] = ["Car", "Motorcycle", "Bus", "Truck", "Bycycle"],
         max_detection: int = 500,
+        detection_area: List[List[float]] = [
+            [0.0, 0.0],
+            [0.0, 1.0],
+            [1.0, 1.0],
+            [1.0, 0.0],
+        ],
         tracker: str = "SORT",
         **kwargs,
     ):
@@ -28,6 +34,7 @@ class VehicleDetectionConfig:
         self.classes_names = classes_names
         self.max_detection = max_detection
         self.tracker = tracker
+        self.detection_area = detection_area
 
         if tracker == "SORT":
             self.init_sort()

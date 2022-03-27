@@ -23,10 +23,7 @@ class VehicleDetection:
         try:
             # Load vehicle detection model (yolo5 architecture)
             self.model = torch.hub.load(
-                "ultralytics/yolov5",
-                "custom",
-                path=self.config.model_path,
-                force_reload=True,
+                "ultralytics/yolov5", "custom", path=self.config.model_path
             )
             # Calculate best imgsz based on model stride
             self.imgsz = check_img_size(self.config.imgsz, self.model.stride)
@@ -44,13 +41,17 @@ class VehicleDetection:
 
     def load_tracker(self):
         # Load tracker
-        # Currently only support SORT, maybe in the future i will add DeepSORT or another good tracker method
-        if self.config.tracker == "SORT":
-            self.tracker = Sort(
-                self.config.sort_max_age,
-                self.config.sort_min_hits,
-                self.config.sort_iou_thres,
-            )
+        # Currently only support forSORT, maybe in the future i will add DeepSORT or another good tracker method
+        try:
+            if self.config.tracker == "SORT":
+                self.tracker = Sort(
+                    self.config.sort_max_age,
+                    self.config.sort_min_hits,
+                    self.config.sort_iou_thres,
+                )
+            return True
+        except:
+            return False
 
     def update(self, img):
         # Detect vehicle object
@@ -187,3 +188,21 @@ class VehicleDetection:
                 )
 
         return result_post
+
+    def ready_check(self) -> bool:
+        """Ready Check"""
+        if self.config.model_path == "":
+            return False
+
+        if len(self.config.detection_area) < 3:
+            return False
+
+        # Force Reload Model and Tracker
+        if self.load_model() == False:
+            print("Failed Initialize Model VD")
+            return False
+
+        if self.load_tracker() == False:
+            return False
+
+        return True
