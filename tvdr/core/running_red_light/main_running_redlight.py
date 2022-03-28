@@ -43,16 +43,16 @@ class RunningRedLight:
         # Bounding rect
         rect = cv2.boundingRect(points)
         x, y, w, h = rect
-        croped = img[y : y + h, x : x + w].copy()
+        self.cropped = img[y : y + h, x : x + w].copy()
 
         # Create masking
         mask_points = points - points.min(axis=0)
-        mask = np.zeros(croped.shape[:2], np.uint8)
+        mask = np.zeros(self.cropped.shape[:2], np.uint8)
         cv2.drawContours(mask, [mask_points], -1, (255, 255, 255), -1, cv2.LINE_AA)
         tl_sumpx = np.sum(mask == 255)
 
         # Convert img from BGR to HSV
-        img_hsv = cv2.cvtColor(croped, cv2.COLOR_BGR2HSV)
+        img_hsv = cv2.cvtColor(self.cropped, cv2.COLOR_BGR2HSV)
 
         # Color segmentation
         for color in ["red", "yellow", "green"]:
@@ -70,6 +70,7 @@ class RunningRedLight:
         for color in ["red", "yellow", "green"]:
             area_percent = int((getattr(self, f"{color}_sumpx") / tl_sumpx) * 100)
             threshold = getattr(self.config, f"{color}_min_area")
+            setattr(self, f"{color}_area", area_percent)
 
             if area_percent >= threshold:
                 return color
@@ -84,16 +85,17 @@ class RunningRedLight:
         height = img_shape[0]
 
         # Rescale bbox
-        bbox[0],bbox[2] = bbox[0]/width, bbox[2]/width
-        bbox[1], bbox[3] = bbox[1]/height, bbox[3]/height
+        r_bbox = [0,0,0,0]
+        r_bbox[0],r_bbox[2] = bbox[0]/width, bbox[2]/width
+        r_bbox[1], r_bbox[3] = bbox[1]/height, bbox[3]/height
 
 
         # create point of polygon
         poly_point = []
-        poly_point.append([bbox[0], bbox[1]])
-        poly_point.append([bbox[0], bbox[3]])
-        poly_point.append([bbox[2], bbox[1]])
-        poly_point.append([bbox[2], bbox[3]])
+        poly_point.append([r_bbox[0], r_bbox[1]])
+        poly_point.append([r_bbox[0], r_bbox[3]])
+        poly_point.append([r_bbox[2], r_bbox[1]])
+        poly_point.append([r_bbox[2], r_bbox[3]])
 
         return poly_point
     

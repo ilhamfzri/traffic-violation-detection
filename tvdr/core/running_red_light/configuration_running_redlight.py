@@ -7,10 +7,10 @@ class RunningRedLightConfig:
     def __init__(
         self,
         traffic_light_area: List[List[float]] = [
-            [0.0, 0.2],
-            [0.0, 0.5],
-            [0.9, 0.3],
-            [1.0, 0.0],
+            [0.4, 0.4],
+            [0.6, 0.4],
+            [0.6, 0.6],
+            [0.4, 0.6],
         ],
         green_hsv_min: List[int] = [36, 25, 25],
         green_hsv_max: List[int] = [70, 255, 255],
