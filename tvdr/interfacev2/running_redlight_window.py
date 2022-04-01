@@ -72,7 +72,6 @@ class RunningRedLightInterface(QDialog):
     def config_init(self):
         # Video Initialize
         self.vid = cv2.VideoCapture(self.video_path)
-        print(int(self.vid.get(cv2.CAP_PROP_POS_FRAMES)))
         _, img = self.vid.read()
 
         if self.vid.isOpened() == False:
@@ -83,20 +82,6 @@ class RunningRedLightInterface(QDialog):
 
         img = self.convert_cv_qt(img)
         self.image_frame.setPixmap(QPixmap.fromImage(img))
-
-    #     # Detection config
-    #     self.model_line.setText(self.config.model_path)
-    #     self.inference_size_spin_box.setValue(self.config.imgsz)
-    #     self.min_conf_spin_box.setValue(self.config.conf_thres)
-    #     self.min_iou_spin_box.setValue(self.config.iou_thres)
-
-    #     # Tracker config
-    #     self.iou_thres_spinbox.setValue(self.config.sort_iou_thres)
-    #     self.min_hits_spinbox.setValue(self.config.sort_min_hits)
-    #     self.max_age_spinbox.setValue(self.config.sort_max_age)
-
-    #     # Video Slider config
-    #     total_frame = self.vid.get(cv2.CAP_PROP_POS_FRAMES)
 
     def set_right_layout(self):
         v_layout = QVBoxLayout()
@@ -197,38 +182,6 @@ class RunningRedLightInterface(QDialog):
 
         if self.yellow_config.result() == 1:
             self.config = self.yellow_config.config
-
-    # def set_tracker_layout(self):
-    #     group_tracker = QGroupBox("Vehicle Tracker (SORT)")
-    #     tracker_layout = QGridLayout()
-
-    #     self.iou_thres_spinbox = QDoubleSpinBox()
-    #     self.iou_thres_spinbox.setMaximum(1)
-    #     self.iou_thres_spinbox.setMinimum(0)
-    #     self.iou_thres_spinbox.setSingleStep(0.01)
-
-    #     self.min_hits_spinbox = QDoubleSpinBox()
-    #     self.min_hits_spinbox.setMaximum(100)
-    #     self.min_hits_spinbox.setMinimum(1)
-    #     self.min_hits_spinbox.setSingleStep(1)
-
-    #     self.max_age_spinbox = QDoubleSpinBox()
-    #     self.max_age_spinbox.setMaximum(200)
-    #     self.max_age_spinbox.setMinimum(1)
-    #     self.max_age_spinbox.setSingleStep(1)
-
-    #     tracker_layout.addWidget(QLabel("IOU Thres"), 0, 0)
-    #     tracker_layout.addWidget(self.iou_thres_spinbox, 0, 1)
-    #     tracker_layout.addWidget(QLabel("Min Hits"), 1, 0)
-    #     tracker_layout.addWidget(self.min_hits_spinbox, 1, 1)
-    #     tracker_layout.addWidget(QLabel("Max Age"), 2, 0)
-    #     tracker_layout.addWidget(self.max_age_spinbox, 2, 1)
-
-    #     tracker_layout.setRowStretch(3, 1)
-
-    #     group_tracker.setLayout(tracker_layout)
-
-    #     return group_tracker
 
     def set_image_layout(self):
         self.image_frame = QLabel()

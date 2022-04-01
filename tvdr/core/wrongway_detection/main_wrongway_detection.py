@@ -49,7 +49,10 @@ class WrongWayDetection:
             new_total_dx = last_total_dx + (x_center - last_x)
             new_total_dy = last_total_dy + (y_center - last_y)
 
-            direction = self.calculate_direction(new_total_dx, new_total_dy)
+            direction = int(self.calculate_direction(new_total_dx, -new_total_dy))
+
+            if direction < 0:
+                direction = direction + 360
 
             self.object_tracker[id] = {
                 "total_dx": new_total_dx,
@@ -69,9 +72,8 @@ class WrongWayDetection:
         all_id_in_tracker = list(self.object_tracker.keys())
         id_not_show_in_frame = list(set(all_id_in_tracker) - set(id_show_in_frame))
         for id in id_not_show_in_frame:
-            miss_count = self.object_tracker[id]["miss_count"] + 1
-            self.object_tracker[id] = {"miss_count": miss_count}
-            if miss_count >= self.config.removal_miss_count:
+            self.object_tracker[id]["miss_count"] += 1
+            if self.object_tracker[id]["miss_count"] >= self.config.removal_miss_count:
                 self.object_tracker.pop(id)
 
     def check_wrongway(self, list_id):
@@ -93,6 +95,7 @@ class WrongWayDetection:
         return direction_id
 
     def detect_violation(self, degree):
+
         if self.config.direction_violation + self.config.direction_violation_thr > 360:
             th1_degrees = self.config.direction_violation_thr - (
                 360 - self.config.direction_violation
