@@ -13,10 +13,13 @@ class HelmetViolation:
         self.load_model()
 
     def load_model(self) -> bool:
-        self.model = torch.load(
-            self.config.model_path, map_location=torch.device(self.config.device)
-        )["model"].float()
-        return True
+        try:
+            self.model = torch.load(
+                self.config.model_path, map_location=torch.device(self.config.device)
+            )["model"].float()
+            return True
+        except:
+            return False
 
     def update(self, img, preds):
         filter_vehicle = self.motorcycle_and_bicycle_filtering(preds)
@@ -50,7 +53,9 @@ class HelmetViolation:
                 self.id_tracker[id]["missing"] = 0
             list_id.append(id)
 
+        # if len(self.id_tracker.keys())>0:
         not_in_list_id = list(set(list(self.id_tracker.keys())) - set(list_id))
+
         for id in not_in_list_id:
             self.id_tracker[id]["age"] += 1
             self.id_tracker[id]["missing"] += 1
@@ -120,3 +125,12 @@ class HelmetViolation:
             return True
 
         return False
+
+    def ready_check(self):
+        if self.config.model_path == "":
+            return False
+        
+        if self.load_model() == False:
+            return False
+        
+        return True

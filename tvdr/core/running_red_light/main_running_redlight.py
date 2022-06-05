@@ -7,7 +7,7 @@ class RunningRedLight:
     def __init__(self, config: RunningRedLightConfig):
         self.config = config
 
-    def update(self, detection, img):
+    def update(self,img,detection):
         vehicle_violate = []
 
         #Detect traffic light state
@@ -133,6 +133,13 @@ class RunningRedLight:
                 return True
 
         return False
+
+    def ready_check(self):
+        if len(self.config.stop_line) == 0:
+            return False
+        if len(self.config.traffic_light_area) <3:
+            return False
+        return True
 
 
     

@@ -1,6 +1,7 @@
 import torch
 import cv2
 import numpy as np
+import logging
 
 from tvdr.utils.general import (
     check_img_size,
@@ -11,7 +12,6 @@ from tvdr.utils.general import (
 )
 from .configuration_vehicle_detection import VehicleDetectionConfig
 from ..sort import Sort
-
 
 class VehicleDetection:
     def __init__(self, config: VehicleDetectionConfig):
@@ -36,7 +36,8 @@ class VehicleDetection:
                 self.model.forward(dummy_im)
             return True
 
-        except:
+        except Exception as e:
+            logging.info(e)
             return False
 
     def load_tracker(self):
@@ -199,7 +200,7 @@ class VehicleDetection:
 
         # Force Reload Model and Tracker
         if self.load_model() == False:
-            print("Failed Initialize Model VD")
+            logging.info("Failed to initialize VD Model")
             return False
 
         if self.load_tracker() == False:

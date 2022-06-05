@@ -190,8 +190,6 @@ class TrafficViolationDetectionPipelines:
         self.vr.database_writer_init("result")
 
     def reset_state(self):
-
-        logger.info("Resetting State")
         self.vd.reset_state()
         self.hvd.reset_state()
         self.wvd.reset_state()

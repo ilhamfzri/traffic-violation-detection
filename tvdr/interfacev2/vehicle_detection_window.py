@@ -189,7 +189,7 @@ class VehicleDetectionInterface(QDialog):
 
     def set_image_layout(self):
         self.image_frame = QLabel()
-        self.image = cv2.imread("samples/huggingface.png")
+        self.image = cv2.imread("samples/meong.jpg")
 
         self.image = self.convert_cv_qt(self.image)
         self.image_frame.setPixmap(QPixmap.fromImage(self.image))

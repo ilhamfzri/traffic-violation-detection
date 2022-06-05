@@ -1,8 +1,5 @@
 import sys
-
-sys.path.append("yolov5_repo")
-
-from tvdr.interface.main import MainWindows
+from tvdr.interfacev2.main_window import MainWindows
 
 
 def main():

@@ -127,3 +127,10 @@ class WrongWayDetection:
 
     def reset_object_tracker(self):
         self.object_tracker = {}
+
+    def ready_check(self):
+        for attr in self.config.__dict__.keys():
+            if attr==None:
+                return False
+        return True
+    

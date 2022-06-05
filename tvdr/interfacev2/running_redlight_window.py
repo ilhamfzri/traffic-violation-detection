@@ -145,7 +145,6 @@ class RunningRedLightInterface(QDialog):
 
         if self.stop_line.result() == 1:
             self.config.stop_line = self.stop_line.get_stopline()
-            print(self.config.stop_line)
 
     def set_traffic_light_area(self):
         self.detection_area = DetectionArea(
@@ -185,8 +184,7 @@ class RunningRedLightInterface(QDialog):
 
     def set_image_layout(self):
         self.image_frame = QLabel()
-        self.image = cv2.imread("samples/huggingface.png")
-
+        self.image = cv2.imread("samples/meong.jpg")
         self.image = self.convert_cv_qt(self.image)
         self.image_frame.setPixmap(QPixmap.fromImage(self.image))
         return self.image_frame

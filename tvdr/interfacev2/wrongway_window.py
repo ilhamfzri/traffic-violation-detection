@@ -9,12 +9,15 @@ from tvdr.core import (
     VehicleDetection,
     PipelineConfig,
 )
+from tvdr.utils import Annotator
+from tvdr.interfacev2 import DirectionViolationInterface
+
 from PySide2.QtWidgets import *
 from PySide2.QtCore import Qt, QTimer
 from PySide2.QtGui import *
-from tvdr.utils import Annotator
 
-from .direction_violation import DirectionViolation
+
+# from .direction_violation import DirectionViolation
 
 
 class WrongWayInterface(QDialog):
@@ -72,10 +75,10 @@ class WrongWayInterface(QDialog):
         grid_left_layout.addWidget(self.direction_sigma_dy_dx_spin_box, 3, 1)
         groupbox_left.setLayout(grid_left_layout)
 
-        self.apply_configuration_button = QPushButton(
-            qta.icon("fa5s.check"), "Apply Configuration"
-        )
-        self.apply_configuration_button.clicked.connect(self.apply_config)
+        # self.apply_configuration_button = QPushButton(
+        #     qta.icon("fa5s.check"), "Apply Configuration"
+        # )
+        # self.apply_configuration_button.clicked.connect(self.apply_config)
 
         self.save_configuration_button = QPushButton(
             qta.icon("mdi6.content-save-check"), "Close and Save Configuration"
@@ -83,7 +86,7 @@ class WrongWayInterface(QDialog):
         self.save_configuration_button.clicked.connect(self.save_config)
 
         v_left_layout.addWidget(groupbox_left)
-        v_left_layout.addWidget(self.apply_configuration_button)
+        # v_left_layout.addWidget(self.apply_configuration_button)
         v_left_layout.addWidget(self.save_configuration_button)
         v_left_layout.addStretch(1)
 
@@ -91,7 +94,7 @@ class WrongWayInterface(QDialog):
 
     def set_image_layout(self):
         self.image_frame = QLabel()
-        self.image = cv2.imread("samples/huggingface.png")
+        self.image = cv2.imread("samples/meong.jpg")
 
         self.image = self.convert_cv_qt(self.image)
         self.image_frame.setPixmap(QPixmap.fromImage(self.image))
@@ -177,14 +180,27 @@ class WrongWayInterface(QDialog):
         pass
 
     def save_config(self):
-        pass
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setText("Save Wrong-way Configuration?")
+
+        msg.setStandardButtons(QMessageBox.Save | QMessageBox.Cancel)
+        response = msg.exec_()
+
+        if response == QMessageBox.Save:
+            self.accept()
+
+        elif response == QMessageBox.Cancel:
+            pass
 
     def set_direction_violation(self):
-        self.direction_violation = DirectionViolation(self.config, self.video_path)
-        self.direction_violation.exec_()
+        self.dvi = DirectionViolationInterface(
+            config=self.config, video_path=self.video_path
+        )
+        self.dvi.exec_()
 
-        if self.direction_violation.result() == 1:
-            self.config = self.direction_violation.config
+        if self.dvi.result() == 1:
+            self.config = self.dvi.config
             self.direction_violation_label.setText(
                 f"Direction Violation \t:  {self.config.direction_violation}°"
             )
@@ -220,6 +236,7 @@ class WrongWayInterface(QDialog):
         annotate_img = self.annotator.wrongway_detection(
             annotate_img, preds, direction_data, violation
         )
+
         self.annotate_state = True
         current_idx = self.vid.get(cv2.CAP_PROP_POS_FRAMES)
         img = self.convert_cv_qt(annotate_img)

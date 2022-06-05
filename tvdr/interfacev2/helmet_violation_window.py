@@ -56,7 +56,6 @@ class HelmetViolationInterface(QDialog):
         self.annotator_config.vd_config = config_vd
         self.annotator = Annotator(self.annotator_config)
 
-
         self.layout = QGridLayout()
 
         self.layout.addLayout(self.set_left_layout(), 0, 0, 1, 2, Qt.AlignLeft)
@@ -200,7 +199,7 @@ class HelmetViolationInterface(QDialog):
 
     def set_image_layout(self):
         self.image_frame = QLabel()
-        self.image = cv2.imread("samples/huggingface.png")
+        self.image = cv2.imread("samples/meong.jpg")
 
         self.image = self.convert_cv_qt(self.image)
         self.image_frame.setPixmap(QPixmap.fromImage(self.image))
@@ -250,10 +249,10 @@ class HelmetViolationInterface(QDialog):
         # Helmet Violation Detection Task
         filter_vehicle = self.hv.motorcycle_and_bicycle_filtering(result)
         violate = self.hv.detect_violation(self.current_img, filter_vehicle)
-        
+
         img_annotate = self.annotator.vehicle_detection(self.current_img, result)
-        img_annotate = self.annotator.helmet_violation(img_annotate,result, violate)
-        
+        img_annotate = self.annotator.helmet_violation(img_annotate, result, violate)
+
         img = self.convert_cv_qt(img_annotate)
         self.image_frame.setPixmap(QPixmap.fromImage(img))
 

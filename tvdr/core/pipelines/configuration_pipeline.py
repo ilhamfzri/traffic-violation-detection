@@ -3,6 +3,7 @@ from tvdr.core import (
     VehicleDetectionConfig,
     RunningRedLightConfig,
     HelmetViolationConfig,
+    WrongWayDetectionConfig,
 )
 
 
@@ -23,6 +24,7 @@ class PipelineConfig:
         self.vd_config = VehicleDetectionConfig()
         self.rrl_config = RunningRedLightConfig()
         self.hv_config = HelmetViolationConfig()
+        self.ww_config = WrongWayDetectionConfig()
 
     def save_config(self, path: str):
         config_dict = {}
@@ -47,11 +49,14 @@ class PipelineConfig:
                 elif atr == "hv_config":
                     config_dict["helmet_violation"] = sub_config_dict
 
+                elif atr == "ww_config":
+                    config_dict["wrong_way"] = sub_config_dict
+
         with open(path, "w", encoding="utf-8") as f:
             json.dump(config_dict, f, indent=4)
 
     def load_config(self, path: str):
-        sub_attr = ["vehicle_detection", "running_red_light", "helmet_violation"]
+        sub_attr = ["vehicle_detection", "running_red_light", "helmet_violation", "wrong_way"]
         with open(path, "r", encoding="utf-8") as f:
             config_dict = json.load(f)
 
@@ -67,6 +72,8 @@ class PipelineConfig:
 
                     elif atr == "helmet_violation":
                         setattr(self.hv_config, sub_atr, sub_config_dict[sub_atr])
-
+                    
+                    elif atr == "wrong_way":
+                        setattr(self.ww_config, sub_atr, sub_config_dict[sub_atr])
             else:
                 setattr(self, atr, config_dict[atr])

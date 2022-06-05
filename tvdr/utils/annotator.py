@@ -75,29 +75,36 @@ class Annotator:
 
     def wrongway_detection(self, img, preds, direction_data, violation):
         img_new = img.copy()
+
         for obj in preds:
-            id = obj[6]
+            x_min, y_min, x_max, y_max = obj[0:4]
+            object_id = obj[6]
 
-            width = abs(obj[0] - obj[2])
-            height = abs(obj[1] - obj[3])
+            width = abs(x_max - x_min)
+            height = abs(y_max - y_min)
 
-            x_center = obj[2] - obj[0]
-            y_center = obj[3] - obj[1]
+            x_center = x_min + width / 2
+            y_center = y_min + height / 2
 
-            degree_direction = direction_data[id]
+            if direction_data[object_id] == None:
+                continue
+
+            degree_direction = int(direction_data[object_id])
             rad_direction = np.radians(degree_direction)
 
-            x = (1 * np.cos(rad_direction)) * width
-            y = (1 * np.sin(rad_direction)) * height
+            x = (0.2 * np.cos(rad_direction)) * width
+            y = (0.2 * np.sin(rad_direction)) * height
 
-            pos1 = (int(x_center + x), int(y_center + y))
-            pos2 = (-pos1[0], -pos1[1])
+            pos1 = (int(x_center - x), int(y_center + y))
+            pos2 = (int(x_center), int(y_center))
+
+            color_arrow = (0, 0, 255) if object_id in violation else (0, 255, 0)
 
             img_new = cv2.arrowedLine(
                 img_new,
                 pos1,
                 pos2,
-                (0, 0, 255),
+                color_arrow,
                 3,
                 cv2.LINE_AA,
                 tipLength=0.5,
